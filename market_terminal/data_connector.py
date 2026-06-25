@@ -8,7 +8,7 @@ import pandas as pd
 from alpaca.data.enums import DataFeed
 from alpaca.data.historical import StockHistoricalDataClient
 from alpaca.data.requests import StockBarsRequest
-from alpaca.data.timeframe import TimeFrame
+from alpaca.data.timeframe import TimeFrame, TimeFrameUnit
 from alpaca.trading.client import TradingClient
 from pandas import DataFrame, Series
 
@@ -57,19 +57,22 @@ class AlpacaDataConnector:
         days: int = 30,
     ) -> DataFrame | Series[Any]:
         """
-        Downloads 30 days of 1-minute OHLCV stock bars.
+        Downloads 30 days of 15-minute OHLCV stock bars.
+        Changed to 15m for smoother structural and key levels
+        analysis e.g. BOS, FVG, IFVG
         """
         clean_symbol = symbol.upper().strip()
 
         if not clean_symbol:
             raise ValueError("Symbol cannot be empty.")
 
+        # we allow users to specify how far back they want to look
         end = datetime.now(timezone.utc)
         start = end - timedelta(days=days)
 
         request = StockBarsRequest(
             symbol_or_symbols=clean_symbol,
-            timeframe=TimeFrame.Minute,
+            timeframe=TimeFrame(15, TimeFrameUnit.Minute),
             start=start,
             end=end,
             feed=self.feed,
@@ -80,6 +83,8 @@ class AlpacaDataConnector:
         if bars.empty:
             return bars
 
+        # we only want to extract the symbol data if
+        # df has multi symbols on the row index
         if isinstance(bars.index, pd.MultiIndex):
             bars = bars.xs(clean_symbol, level=0)
 

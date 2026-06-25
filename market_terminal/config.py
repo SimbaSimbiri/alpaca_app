@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 from dotenv import load_dotenv
 
-
+# load environment variables from our .env file
 load_dotenv()
 
 
@@ -20,7 +20,7 @@ def load_settings() -> Settings:
     api_key = os.getenv("ALPACA_API_KEY")
     secret_key = os.getenv("ALPACA_SECRET_KEY")
     data_feed = os.getenv("ALPACA_DATA_FEED", "iex").lower().strip()
-
+    # we check if both values are non-null
     if not api_key or not secret_key:
         raise RuntimeError(
             "Missing Alpaca credentials. Add ALPACA_API_KEY and "
