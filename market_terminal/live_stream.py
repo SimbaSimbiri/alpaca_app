@@ -38,6 +38,8 @@ class LiveMarketStream:
         self.thread: threading.Thread | None = None
 
     async def _quote_handler(self, quote: Any) -> None:
+        print("QUOTE RECEIVED:", quote)
+
         self.output_queue.put(
             {
                 "type": "quote",
@@ -49,6 +51,8 @@ class LiveMarketStream:
         )
 
     async def _trade_handler(self, trade: Any) -> None:
+        print("TRADE RECEIVED:", trade)
+
         self.output_queue.put(
             {
                 "type": "trade",

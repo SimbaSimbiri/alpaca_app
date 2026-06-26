@@ -13,7 +13,7 @@ from alpaca.trading.client import TradingClient
 from pandas import DataFrame, Series
 
 from market_terminal.config import load_settings
-
+from market_terminal.constants import HISTORICAL_DAYS, TIMEFRAME_AMOUNT
 
 FEED_MAP = {
     "iex": DataFeed.IEX,
@@ -54,7 +54,7 @@ class AlpacaDataConnector:
     def get_historical_bars(
         self,
         symbol: str,
-        days: int = 30,
+        days: int = HISTORICAL_DAYS,
     ) -> DataFrame | Series[Any]:
         """
         Downloads 30 days of 15-minute OHLCV stock bars.
@@ -72,7 +72,7 @@ class AlpacaDataConnector:
 
         request = StockBarsRequest(
             symbol_or_symbols=clean_symbol,
-            timeframe=TimeFrame(15, TimeFrameUnit.Minute),
+            timeframe=TimeFrame(TIMEFRAME_AMOUNT, TimeFrameUnit.Minute),
             start=start,
             end=end,
             feed=self.feed,
