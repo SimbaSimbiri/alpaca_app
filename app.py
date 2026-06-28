@@ -5,35 +5,40 @@ import threading
 import tkinter as tk
 from tkinter import messagebox, ttk
 
-import matplotlib.dates as mdates
 import pandas as pd
+from alpaca.data import TimeFrameUnit, TimeFrame
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from matplotlib.patches import Rectangle
 
-from market_terminal.data_connector import AlpacaDataConnector
-from market_terminal.live_stream import LiveMarketStream
 from market_terminal.constants import (
     BEAR_COLOR,
     BULL_COLOR,
     CANDLE_ALPHA,
     CANDLE_WIDTH,
-    DISPLAY_DAYS,
     HISTORICAL_DAYS,
     MIN_CANDLE_BODY_RATIO,
-    TIMEFRAME_LABEL,
     VOLUME_ALPHA,
     VOLUME_BAND_RATIO,
     VOLUME_GAP_RATIO,
-    WICK_LINE_WIDTH,
+    WICK_LINE_WIDTH, CHART_WINDOW_BARS,
 )
+from market_terminal.data_connector import AlpacaDataConnector
+from market_terminal.live_stream import LiveMarketStream
 
 
 class MarketTerminalApp:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
         self.root.title("Market Data Terminal")
-        self.root.geometry("1150x820")
+        try:
+            self.root.state("zoomed")
+        except tk.TclError:
+            screen_width = self.root.winfo_screenwidth()
+            screen_height = self.root.winfo_screenheight()
+            self.root.geometry(f"{screen_width}x{screen_height}+0+0")
+
+        self.root.minsize(1000, 650)
 
         self.ui_queue: queue.Queue = queue.Queue()
         self.connector = AlpacaDataConnector()
@@ -42,18 +47,30 @@ class MarketTerminalApp:
         self.symbol_var = tk.StringVar(value="MSFT")
         self.status_var = tk.StringVar(value="Ready")
 
+        self.timeframe_amount_var = tk.StringVar(value="15")
+        self.timeframe_unit_var = tk.StringVar(value="Minute")
+
         self.bid_var = tk.StringVar(value="—")
         self.ask_var = tk.StringVar(value="—")
         self.last_var = tk.StringVar(value="—")
         self.quote_time_var = tk.StringVar(value="—")
         self.trade_time_var = tk.StringVar(value="—")
 
+        self.chart_bars: pd.DataFrame | None = None
+        self.chart_symbol = ""
+        self.chart_timeframe_label = ""
+        self.chart_left_index = 0
+        self.chart_window_bars = CHART_WINDOW_BARS
+        self.chart_range_var = tk.StringVar(value="No historical chart loaded")
+
+        self._create_scrollable_page()
         self._build_layout()
         self._check_authentication()
         self._poll_queue()
 
     def _build_layout(self) -> None:
-        top_frame = ttk.Frame(self.root, padding=10)
+        parent = self.page
+        top_frame = ttk.Frame(parent, padding=10)
         top_frame.pack(side=tk.TOP, fill=tk.X)
 
         ttk.Label(top_frame, text="Ticker:").pack(side=tk.LEFT)
@@ -64,6 +81,24 @@ class MarketTerminalApp:
             width=12,
         )
         symbol_entry.pack(side=tk.LEFT, padx=6)
+
+        ttk.Label(top_frame, text="Timeframe:").pack(side=tk.LEFT, padx=(12, 2))
+
+        timeframe_amount_entry = ttk.Entry(
+            top_frame,
+            textvariable=self.timeframe_amount_var,
+            width=5,
+        )
+        timeframe_amount_entry.pack(side=tk.LEFT, padx=4)
+
+        timeframe_unit_dropdown = ttk.Combobox(
+            top_frame,
+            textvariable=self.timeframe_unit_var,
+            values=["Minute", "Hour", "Day", "Week", "Month"],
+            width=8,
+            state="readonly",
+        )
+        timeframe_unit_dropdown.pack(side=tk.LEFT, padx=4)
 
         ttk.Button(
             top_frame,
@@ -89,7 +124,7 @@ class MarketTerminalApp:
         ).pack(side=tk.LEFT, padx=20)
 
         quote_frame = ttk.LabelFrame(
-            self.root,
+            parent,
             text="Real-Time Market Data",
             padding=10,
         )
@@ -102,25 +137,39 @@ class MarketTerminalApp:
         self._add_quote_box(quote_frame, "Trade Time", self.trade_time_var, 4)
 
         chart_frame = ttk.LabelFrame(
-            self.root,
+            parent,
             text="Historical OHLCV Viewer",
             padding=10,
         )
-        chart_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=10, pady=5)
+        chart_frame.pack(side=tk.TOP, fill=tk.X, expand=False, padx=10, pady=8)
 
-        self.figure = Figure(figsize=(11, 5.5), dpi=100)
-        self.price_ax = self.figure.add_subplot(211)
-        self.volume_ax = self.figure.add_subplot(212, sharex=self.price_ax)
+        self.figure = Figure(figsize=(13, 6), dpi=100)
+        self.price_ax = self.figure.add_subplot(111)
 
         self.canvas = FigureCanvasTkAgg(self.figure, master=chart_frame)
         self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
+        chart_scroll_frame = ttk.Frame(chart_frame)
+        chart_scroll_frame.pack(fill=tk.X, pady=(6, 0))
+
+        self.chart_scrollbar = ttk.Scrollbar(
+            chart_scroll_frame,
+            orient=tk.HORIZONTAL,
+            command=self._on_chart_scroll,
+        )
+        self.chart_scrollbar.pack(fill=tk.X, expand=True)
+
+        ttk.Label(
+            chart_frame,
+            textvariable=self.chart_range_var,
+        ).pack(anchor="w", pady=(4, 0))
+
         table_frame = ttk.LabelFrame(
-            self.root,
+            parent,
             text="Most Recent OHLCV Bars",
             padding=10,
         )
-        table_frame.pack(side=tk.BOTTOM, fill=tk.X, padx=10, pady=5)
+        table_frame.pack(side=tk.TOP, fill=tk.X, padx=10, pady=8)
 
         columns = ("timestamp", "open", "high", "low", "close", "volume")
         self.bars_table = ttk.Treeview(
@@ -136,12 +185,40 @@ class MarketTerminalApp:
 
         self.bars_table.pack(fill=tk.X)
 
+    def _get_selected_timeframe(self) -> tuple[TimeFrame, str]:
+        amount_text = self.timeframe_amount_var.get().strip()
+        unit_text = self.timeframe_unit_var.get().strip()
+
+        try:
+            amount = int(amount_text)
+        except ValueError:
+            raise ValueError("Timeframe amount must be a whole number.")
+
+        if amount <= 0:
+            raise ValueError("Timeframe amount must be greater than zero.")
+
+        unit_map = {
+            "Minute": TimeFrameUnit.Minute,
+            "Hour": TimeFrameUnit.Hour,
+            "Day": TimeFrameUnit.Day,
+            "Week": TimeFrameUnit.Week,
+            "Month": TimeFrameUnit.Month
+        }
+
+        if unit_text not in unit_map:
+            raise ValueError("Invalid timeframe unit selected.")
+
+        time_frame = TimeFrame(amount, unit_map[unit_text])
+        label = f"{amount}-{unit_text.lower()}"
+
+        return time_frame, label
+
     def _add_quote_box(
-        self,
-        parent: ttk.Frame,
-        label: str,
-        variable: tk.StringVar,
-        column: int,
+            self,
+            parent: ttk.Frame,
+            label: str,
+            variable: tk.StringVar,
+            column: int,
     ) -> None:
         frame = ttk.Frame(parent)
         frame.grid(row=0, column=column, padx=16, sticky="w")
@@ -172,22 +249,29 @@ class MarketTerminalApp:
             messagebox.showwarning("Missing Symbol", "Please enter a ticker.")
             return
 
+        try:
+            time_frame, timeframe_label = self._get_selected_timeframe()
+        except ValueError as exc:
+            messagebox.showwarning("Invalid Timeframe", str(exc))
+            return
+
         self.status_var.set(
-            f"Loading {HISTORICAL_DAYS} days of {TIMEFRAME_LABEL} bars for {symbol}..."
+            f"Loading {HISTORICAL_DAYS} days of {timeframe_label} bars for {symbol}..."
         )
 
         worker = threading.Thread(
             target=self._historical_worker,
-            args=(symbol,),
+            args=(symbol, time_frame, timeframe_label),
             daemon=True,
         )
         worker.start()
 
-    def _historical_worker(self, symbol: str) -> None:
+    def _historical_worker(self, symbol: str, time_frame: TimeFrame, timeframe_label: str) -> None:
         try:
             bars = self.connector.get_historical_bars(
                 symbol=symbol,
-                days=HISTORICAL_DAYS,
+                time_frame=time_frame,
+                days=HISTORICAL_DAYS
             )
 
             self.ui_queue.put(
@@ -195,6 +279,7 @@ class MarketTerminalApp:
                     "type": "historical",
                     "symbol": symbol,
                     "bars": bars,
+                    "timeframe_label": timeframe_label
                 }
             )
 
@@ -276,16 +361,17 @@ class MarketTerminalApp:
     def _handle_historical_message(self, message: dict) -> None:
         symbol = message["symbol"]
         bars = message["bars"]
+        timeframe_label = message.get("timeframe_label", "selected timeframe")
 
         if bars.empty:
             self.status_var.set(f"No historical bars returned for {symbol}")
             return
 
-        self._draw_ohlcv_chart(symbol, bars)
+        self._draw_ohlcv_chart(symbol, bars, timeframe_label)
         self._populate_bars_table(bars)
 
         self.status_var.set(
-            f"Loaded {len(bars):,} {TIMEFRAME_LABEL} historical bars for {symbol}"
+            f"Loaded {len(bars):,} {timeframe_label} historical bars for {symbol}"
         )
 
     def _handle_quote_message(self, message: dict) -> None:
@@ -310,19 +396,146 @@ class MarketTerminalApp:
         symbol = message.get("symbol", self.symbol_var.get().upper().strip())
         self.status_var.set(f"Received live trade for {symbol}")
 
-    def _draw_ohlcv_chart(self, symbol: str, bars: pd.DataFrame) -> None:
+    def _create_scrollable_page(self) -> None:
+        self.scroll_canvas = tk.Canvas(
+            self.root,
+            highlightthickness=0,
+        )
+
+        self.scrollbar = ttk.Scrollbar(
+            self.root,
+            orient="vertical",
+            command=self.scroll_canvas.yview,
+        )
+
+        self.page = ttk.Frame(self.scroll_canvas)
+
+        self.page_window = self.scroll_canvas.create_window(
+            (0, 0),
+            window=self.page,
+            anchor="nw",
+        )
+
+        self.scroll_canvas.configure(
+            yscrollcommand=self.scrollbar.set,
+        )
+
+        self.scroll_canvas.pack(
+            side=tk.LEFT,
+            fill=tk.BOTH,
+            expand=True,
+        )
+
+        self.scrollbar.pack(
+            side=tk.RIGHT,
+            fill=tk.Y,
+        )
+
+        self.page.bind(
+            "<Configure>",
+            lambda event: self.scroll_canvas.configure(
+                scrollregion=self.scroll_canvas.bbox("all")
+            ),
+        )
+
+        self.scroll_canvas.bind(
+            "<Configure>",
+            lambda event: self.scroll_canvas.itemconfig(
+                self.page_window,
+                width=event.width,
+            ),
+        )
+
+        self.scroll_canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+
+    def _on_mousewheel(self, event: tk.Event) -> None:
+        self.scroll_canvas.yview_scroll(
+            int(-1 * (event.delta / 120)),
+            "units",
+        )
+
+    def _draw_ohlcv_chart(
+            self,
+            symbol: str,
+            bars: pd.DataFrame,
+            timeframe_label: str,
+    ) -> None:
+        if bars.empty:
+            self.figure.clear()
+            self.price_ax = self.figure.add_subplot(111)
+            self.price_ax.set_title(f"No historical data available for {symbol}")
+            self.canvas.draw()
+            return
+
+        self.chart_bars = bars.copy()
+        self.chart_symbol = symbol
+        self.chart_timeframe_label = timeframe_label
+
+        total_bars = len(self.chart_bars)
+        self.chart_window_bars = min(CHART_WINDOW_BARS, total_bars)
+
+        self.chart_left_index = max(0, total_bars - self.chart_window_bars)
+
+        self._render_chart_window()
+
+    def _on_chart_scroll(self, *args) -> None:
+        if self.chart_bars is None or self.chart_bars.empty:
+            return
+
+        total_bars = len(self.chart_bars)
+        max_left_index = max(0, total_bars - self.chart_window_bars)
+
+        if max_left_index == 0:
+            self.chart_left_index = 0
+            self._render_chart_window()
+            return
+
+        command = args[0]
+
+        if command == "moveto":
+            fraction = float(args[1])
+            self.chart_left_index = int(fraction * max_left_index)
+
+        elif command == "scroll":
+            amount = int(args[1])
+            unit = args[2]
+
+            if unit == "pages":
+                step = max(1, int(self.chart_window_bars * 0.8))
+            else:
+                step = max(1, self.chart_window_bars // 10)
+
+            self.chart_left_index += amount * step
+
+        self.chart_left_index = max(
+            0,
+            min(self.chart_left_index, max_left_index),
+        )
+
+        self._render_chart_window()
+
+    def _render_chart_window(self) -> None:
+        if self.chart_bars is None or self.chart_bars.empty:
+            return
+
+        bars = self.chart_bars
+        symbol = self.chart_symbol
+        timeframe_label = self.chart_timeframe_label
+
+        left = self.chart_left_index
+        right = min(left + self.chart_window_bars, len(bars))
+
+        plot_df = bars.iloc[left:right].copy()
+
         self.figure.clear()
         self.price_ax = self.figure.add_subplot(111)
-
-        latest_timestamp = bars.index.max()
-        start_timestamp = latest_timestamp - pd.Timedelta(days=DISPLAY_DAYS)
-        plot_df = bars.loc[bars.index >= start_timestamp].copy()
 
         if plot_df.empty:
             self.price_ax.set_title(f"No historical data available for {symbol}")
             self.canvas.draw()
             return
 
+        # Use local x positions so the visible window is compact.
         x_positions = list(range(len(plot_df)))
 
         price_min = plot_df["low"].min()
@@ -369,9 +582,10 @@ class MarketTerminalApp:
 
             candle_height = max(raw_body_height, min_body_height)
 
-            # Center the artificial minimum-height body around the true close/open area.
             if raw_body_height < min_body_height:
-                candle_low = ((open_price + close_price) / 2) - (min_body_height / 2)
+                candle_low = ((open_price + close_price) / 2) - (
+                        min_body_height / 2
+                )
 
             rectangle = Rectangle(
                 (x_pos - CANDLE_WIDTH / 2, candle_low),
@@ -386,9 +600,7 @@ class MarketTerminalApp:
 
             self.price_ax.add_patch(rectangle)
 
-        scaled_volume = (
-                                plot_df["volume"] / max_volume
-                        ) * volume_band_height
+        scaled_volume = (plot_df["volume"] / max_volume) * volume_band_height
 
         self.price_ax.bar(
             x_positions,
@@ -408,7 +620,7 @@ class MarketTerminalApp:
             zorder=2,
         )
 
-        # Day separators and labels.
+        # Day separators and labels for only the visible section.
         normalized_dates = plot_df.index.normalize()
         day_start_positions = []
 
@@ -427,14 +639,14 @@ class MarketTerminalApp:
             )
 
         day_labels = [
-            plot_df.index[pos].strftime("%a %d/%m/%y")
+            plot_df.index[pos].strftime("%a %d/%m")
             for pos in day_start_positions
         ]
 
         self.price_ax.set_xticks(day_start_positions)
         self.price_ax.set_xticklabels(
             day_labels,
-            rotation=30,
+            rotation=90,
             ha="right",
             fontsize=8,
         )
@@ -451,23 +663,39 @@ class MarketTerminalApp:
             tick for tick in current_ticks
             if price_min <= tick <= price_max
         ]
-        self.price_ax.set_yticks(price_ticks)
+
+        if price_ticks:
+            self.price_ax.set_yticks(price_ticks)
 
         self.price_ax.text(
             0.01,
-            0.035,
-            "Volume scaled visually",
+            0.085,
+            "Volume",
             transform=self.price_ax.transAxes,
             fontsize=8,
             alpha=0.65,
         )
 
         self.price_ax.set_title(
-            f"{symbol} {TIMEFRAME_LABEL.title()} OHLCV — Last {DISPLAY_DAYS} Calendar Days"
+            f"{symbol} {timeframe_label.title()} OHLCV"
         )
         self.price_ax.set_ylabel("Price")
-
         self.price_ax.grid(True, alpha=0.18)
+
+        # Update chart scrollbar thumb.
+        total_bars = len(bars)
+        if total_bars > 0:
+            first = left / total_bars
+            last = right / total_bars
+            self.chart_scrollbar.set(first, last)
+
+        start_label = plot_df.index[0].strftime("%a %d/%m/%y %H:%M")
+        end_label = plot_df.index[-1].strftime("%a %d/%m/%y %H:%M")
+
+        self.chart_range_var.set(
+            f"Showing {start_label} → {end_label} "
+            f"({len(plot_df)} of {len(bars)} bars)"
+        )
 
         self.figure.tight_layout()
         self.canvas.draw()

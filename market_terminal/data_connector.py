@@ -4,16 +4,15 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import pandas as pd
-
 from alpaca.data.enums import DataFeed
 from alpaca.data.historical import StockHistoricalDataClient
 from alpaca.data.requests import StockBarsRequest
-from alpaca.data.timeframe import TimeFrame, TimeFrameUnit
+from alpaca.data.timeframe import TimeFrame
 from alpaca.trading.client import TradingClient
 from pandas import DataFrame, Series
 
 from market_terminal.config import load_settings
-from market_terminal.constants import HISTORICAL_DAYS, TIMEFRAME_AMOUNT, DATA_FEED_IEX, DATA_FEED_SIP
+from market_terminal.constants import HISTORICAL_DAYS, DATA_FEED_IEX, DATA_FEED_SIP
 
 FEED_MAP = {
     DATA_FEED_IEX: DataFeed.IEX,  # Investor’s exchange data feed
@@ -54,13 +53,15 @@ class AlpacaDataConnector:
     def get_historical_bars(
             self,
             symbol: str,
-            timeframe: TimeFrameUnit = TimeFrameUnit.Minute,
+            time_frame: TimeFrame,
             days: int = HISTORICAL_DAYS,
     ) -> DataFrame | Series[Any]:
         """
-        Downloads 30 days of 15-minute OHLCV stock bars.
-        Changed to 15m for smoother structural and key levels
-        analysis e.g. BOS, FVG, IFVG
+        Downloads historical OHLCV stock bars using the user-selected timeframe.
+        eg:
+            TimeFrame(15, TimeFrameUnit.Minute) -> 15-minute bars
+            TimeFrame(1, TimeFrameUnit.Hour) -> 1-hour bars
+            TimeFrame(1, TimeFrameUnit.Day) -> daily bars
         """
         clean_symbol = symbol.upper().strip()
 
@@ -73,7 +74,7 @@ class AlpacaDataConnector:
 
         request = StockBarsRequest(
             symbol_or_symbols=clean_symbol,
-            timeframe=TimeFrame(TIMEFRAME_AMOUNT, timeframe),
+            timeframe=time_frame,
             start=start,
             end=end,
             feed=self.feed,

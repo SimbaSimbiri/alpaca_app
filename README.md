@@ -8,9 +8,9 @@ This project simulates the core components of a lightweight trading terminal: au
 
 * Authenticates with Alpaca paper-trading credentials
 * Loads API keys securely from a local `.env` file
-* Downloads 30 calendar days of historical OHLCV data
-* Uses 30-minute stock bars
-* Displays the most recent 10 calendar days in the chart for readability
+* Downloads 730 calendar days of historical OHLCV data
+* Uses 15-minute stock bars by default, user can now toggle to desired timeframe.
+* Displays the most recent 70 candle timeframe bars in the chart for readability
 * Shows candlestick-style OHLCV data with volume bars
 * Colors bullish candles green and bearish candles black
 * Adds daily separators to make session boundaries easier to read
@@ -127,10 +127,10 @@ Recommended tickers for testing:
 ## How to Use
 
 1. Open the app with `python app.py`.
-2. Enter a ticker symbol, such as `MSFT`.
+2. Enter a ticker symbol, such as `TSLA`.
 3. Click **Load Historical Data**.
-4. The app downloads 30 calendar days of 15-minute OHLCV bars.
-5. The chart displays the most recent 10 calendar days for readability.
+4. The app downloads 730 calendar days of 15-minute OHLCV bars.
+5. The chart displays the most recent 70 candle bars for readability.
 6. Click **Start Live Stream**.
 7. The real-time quote panel waits for live bid, ask, and last trade updates.
 8. Click **Stop Stream** to stop the websocket stream.
@@ -166,12 +166,19 @@ Historical data can load outside regular market hours.
 
 Real-time quotes and trades are easiest to observe during regular US market hours. Outside market hours, the websocket may connect successfully but receive few or no quote/trade updates depending on the ticker, feed, and market activity.
 
-## Screenshot
-NVDA Chart Outside Trading Hours
+## Screenshots
+MSFT 4H Chart for the last two years
+![MSFT 4H OHLCV Chart for the last two years](screenshots/ui_running_3.png)
+
+MSFT Most Recent OHLCV Data
+![MSFT Most Recent Data](screenshots/ui_running_4.png)
+
+NVDA 30m Chart Outside Trading Hours
 
 ![NVDA Chart Outside Trading Hours](screenshots/ui_running_1.png)
 
-NVDA Most Recent Data
+NVDA Most Recent OHLCV Data
 
 ![NVDA Most Recent Data](screenshots/ui_running_2.png)
+
 ##
