@@ -13,11 +13,11 @@ from alpaca.trading.client import TradingClient
 from pandas import DataFrame, Series
 
 from market_terminal.config import load_settings
-from market_terminal.constants import HISTORICAL_DAYS, TIMEFRAME_AMOUNT
+from market_terminal.constants import HISTORICAL_DAYS, TIMEFRAME_AMOUNT, DATA_FEED_IEX, DATA_FEED_SIP
 
 FEED_MAP = {
-    "iex": DataFeed.IEX,
-    "sip": DataFeed.SIP,
+    DATA_FEED_IEX: DataFeed.IEX,  # Investor’s exchange data feed
+    DATA_FEED_SIP: DataFeed.SIP,  # Securities' Information Processor feed
 }
 
 
@@ -52,9 +52,10 @@ class AlpacaDataConnector:
         return f"Paper account status: {account.status}"
 
     def get_historical_bars(
-        self,
-        symbol: str,
-        days: int = HISTORICAL_DAYS,
+            self,
+            symbol: str,
+            timeframe: TimeFrameUnit = TimeFrameUnit.Minute,
+            days: int = HISTORICAL_DAYS,
     ) -> DataFrame | Series[Any]:
         """
         Downloads 30 days of 15-minute OHLCV stock bars.
@@ -72,7 +73,7 @@ class AlpacaDataConnector:
 
         request = StockBarsRequest(
             symbol_or_symbols=clean_symbol,
-            timeframe=TimeFrame(TIMEFRAME_AMOUNT, TimeFrameUnit.Minute),
+            timeframe=TimeFrame(TIMEFRAME_AMOUNT, timeframe),
             start=start,
             end=end,
             feed=self.feed,
@@ -88,6 +89,8 @@ class AlpacaDataConnector:
         if isinstance(bars.index, pd.MultiIndex):
             bars = bars.xs(clean_symbol, level=0)
 
+        # xs returns a df indexed with the date and time, but we convert all
+        # just for safety and consistent formating
         bars.index = pd.to_datetime(bars.index)
 
         expected_columns = ["open", "high", "low", "close", "volume"]

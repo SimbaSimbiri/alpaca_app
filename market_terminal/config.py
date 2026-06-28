@@ -5,6 +5,8 @@ from dataclasses import dataclass
 
 from dotenv import load_dotenv
 
+from market_terminal.constants import ALPACA_API_KEY, ALPACA_SECRET_KEY, ALPACA_DATA_FEED, DATA_FEED_IEX
+
 # load environment variables from our .env file
 load_dotenv()
 
@@ -17,9 +19,9 @@ class Settings:
 
 
 def load_settings() -> Settings:
-    api_key = os.getenv("ALPACA_API_KEY")
-    secret_key = os.getenv("ALPACA_SECRET_KEY")
-    data_feed = os.getenv("ALPACA_DATA_FEED", "iex").lower().strip()
+    api_key = os.getenv(ALPACA_API_KEY)
+    secret_key = os.getenv(ALPACA_SECRET_KEY)
+    data_feed = os.getenv(ALPACA_DATA_FEED, DATA_FEED_IEX).lower().strip()
     # we check if both values are non-null
     if not api_key or not secret_key:
         raise RuntimeError(

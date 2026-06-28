@@ -8,11 +8,11 @@ from alpaca.data.enums import DataFeed
 from alpaca.data.live import StockDataStream
 
 from market_terminal.config import load_settings
-
+from market_terminal.constants import DATA_FEED_IEX, DATA_FEED_SIP
 
 FEED_MAP = {
-    "iex": DataFeed.IEX,
-    "sip": DataFeed.SIP,
+    DATA_FEED_IEX: DataFeed.IEX,
+    DATA_FEED_SIP: DataFeed.SIP,
 }
 
 
@@ -66,6 +66,8 @@ class LiveMarketStream:
         if not self.symbol:
             raise ValueError("Symbol cannot be empty.")
 
+        # we first subscribe to what we want to stream from before running stream
+        # each subscription has a handler that will enable enqueue of events into the app
         self.stream.subscribe_quotes(self._quote_handler, self.symbol)
         self.stream.subscribe_trades(self._trade_handler, self.symbol)
 
