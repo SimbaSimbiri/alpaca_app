@@ -27,6 +27,7 @@ def prepare_ohlcv(df: pd.DataFrame) -> pd.DataFrame:
 def add_sma(df: pd.DataFrame, windows: tuple[int, ...] = (20, 50, 60, 200)) -> pd.DataFrame:
     out = df.copy()
     for window in windows:
+        # sma for each window so we have added columns of size len(windows)
         out[f"sma_{window}"] = out["close"].rolling(window=window).mean()
     return out
 
