@@ -97,9 +97,8 @@ def add_mean_reversion_strategy(df: pd.DataFrame) -> tuple[pd.DataFrame, Strateg
         & (out["close"] < out["bb_lower_20"])
     )
 
-    # The first exit is the assignment's classic overbought exit. The middle-band
-    # exit is a practical risk-management exit so the strategy does not hold a
-    # mean-reversion trade indefinitely waiting for RSI > 70.
+    # The middle-band exit is a practical risk-management exit so
+    # the strategy does not hold a mean-reversion trade indefinitely waiting for RSI > 70.
     exit_ = (
         ((out["rsi_14"] > 70) & (out["close"] > out["bb_upper_20"]))
         | (out["close"] > out["bb_middle_20"])
