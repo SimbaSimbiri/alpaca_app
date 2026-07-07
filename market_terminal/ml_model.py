@@ -109,15 +109,25 @@ def print_model_summary(
     model: RandomForestClassifier,
     X_test: pd.DataFrame,
     y_test: pd.Series,
+    symbol: str = "the ticker",
 ) -> None:
     """
-    Prints classification performance for debugging.
+    Prints classification performance and explains the confusion matrix.
+
+    Target meaning:
+    - 0 = next-day return <= 0
+    - 1 = next-day return > 0
     """
 
     predictions = model.predict(X_test)
 
     accuracy = accuracy_score(y_test, predictions)
-    matrix = confusion_matrix(y_test, predictions)
+    matrix = confusion_matrix(y_test, predictions, labels=[0, 1])
+
+    true_negative = matrix[0, 0]
+    false_positive = matrix[0, 1]
+    false_negative = matrix[1, 0]
+    true_positive = matrix[1, 1]
 
     print("\nModel Evaluation")
     print("-" * 40)
@@ -125,6 +135,15 @@ def print_model_summary(
 
     print("\nConfusion Matrix:")
     print(matrix)
+
+    print("\nConfusion Matrix Meaning")
+    print("-" * 40)
+    print(f"{'Count':>8} | Meaning")
+    print(f"{'-' * 8} | {'-' * 70}")
+    print(f"{true_negative:>8} | Model correctly predicted {symbol} would not go up")
+    print(f"{false_positive:>8} | Model predicted {symbol} would go up, but it did not")
+    print(f"{false_negative:>8} | Model predicted {symbol} would not go up, but it did")
+    print(f"{true_positive:>8} | Model correctly predicted {symbol} would go up")
 
     print("\nClassification Report:")
     print(
