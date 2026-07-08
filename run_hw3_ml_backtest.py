@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
-from datetime import datetime, time, timezone
+from datetime import datetime, time, timezone, timedelta
 from pathlib import Path
 
 import joblib
@@ -106,11 +106,14 @@ def download_daily_ohlcv_from_alpaca(
     symbol: str,
     start: datetime,
     end: datetime,
+    feed: str = "iex",
 ) -> pd.DataFrame:
     """
     Downloads fresh daily OHLCV data from Alpaca.
-    Otherwise user can use data stored in output folder generated after running
-    run_backtest.py script.
+
+    feed options:
+    - "iex": free real-time IEX feed
+    - "sip": full-market SIP feed, but recent data may require a paid subscription
 
     Output columns:
     - open
@@ -121,6 +124,7 @@ def download_daily_ohlcv_from_alpaca(
     """
 
     try:
+        from alpaca.data.enums import DataFeed
         from alpaca.data.historical import StockHistoricalDataClient
         from alpaca.data.requests import StockBarsRequest
         from alpaca.data.timeframe import TimeFrame
@@ -137,14 +141,36 @@ def download_daily_ohlcv_from_alpaca(
         secret_key=api_secret,
     )
 
+    feed = feed.lower().strip()
+
+    if feed == "iex":
+        data_feed = DataFeed.IEX
+    elif feed == "sip":
+        data_feed = DataFeed.SIP
+    else:
+        raise ValueError("feed must be either 'iex' or 'sip'.")
+
     request = StockBarsRequest(
         symbol_or_symbols=symbol,
         timeframe=TimeFrame.Day,
         start=start,
         end=end,
+        feed=data_feed,
     )
 
-    bars = client.get_stock_bars(request).df
+    try:
+        bars = client.get_stock_bars(request).df
+    except Exception as exc:
+        raise RuntimeError(
+            f"Failed to download Alpaca data for {symbol} using feed='{feed}'.\n\n"
+            "Most common fix:\n"
+            "1. Use the free IEX feed:\n"
+            f"   python run_hw3_ml_backtest.py --symbol {symbol} --feed iex\n\n"
+            "2. Or use SIP with an end time at least 15–20 minutes behind current time:\n"
+            f"   python run_hw3_ml_backtest.py --symbol {symbol} --feed sip --data-delay-minutes 20\n\n"
+            "Original Alpaca error:\n"
+            f"{exc}"
+        ) from exc
 
     if bars.empty:
         raise ValueError(
@@ -174,7 +200,6 @@ def download_daily_ohlcv_from_alpaca(
 
     return ohlcv
 
-
 def save_pca_summary(fitted_pca, output_path: Path) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -198,8 +223,32 @@ def run_hw3_pipeline(args: argparse.Namespace) -> None:
 
     now_utc = datetime.now(timezone.utc)
 
-    end = parse_date_arg(args.end, default=now_utc, end_of_day=True)
-    start = parse_date_arg(args.start, default=years_ago(end, args.years))
+    # Avoid Alpaca recent SIP restriction by default.
+    # The Basic/free plan can error if we request SIP data too close to real time.
+    safe_default_end = now_utc - timedelta(minutes=args.data_delay_minutes)
+
+    end = parse_date_arg(
+        args.end,
+        default=safe_default_end,
+        end_of_day=True,
+    )
+
+    # If using SIP, automatically cap end time so it is not too recent.
+    if args.feed.lower() == "sip":
+        latest_allowed_end = now_utc - timedelta(minutes=args.data_delay_minutes)
+
+        if end > latest_allowed_end:
+            print(
+                "\nRequested SIP end time is too recent for many Alpaca accounts."
+            )
+            print(f"Original end: {end}")
+            print(f"Adjusted end: {latest_allowed_end}")
+            end = latest_allowed_end
+
+    start = parse_date_arg(
+        args.start,
+        default=years_ago(end, args.years),
+    )
 
     if start >= end:
         raise ValueError("Start date must be before end date.")
@@ -230,6 +279,7 @@ def run_hw3_pipeline(args: argparse.Namespace) -> None:
         symbol=symbol,
         start=start,
         end=end,
+        feed=args.feed
     )
 
     raw_data_path = data_dir / f"{safe_symbol}_daily_ohlcv.csv"
@@ -453,6 +503,8 @@ def run_hw3_pipeline(args: argparse.Namespace) -> None:
         "symbol": symbol,
         "start": str(start),
         "end": str(end),
+        "feed": args.feed,
+        "data_delay_minutes": args.data_delay_minutes,
         "years": args.years,
         "test_size": args.test_size,
         "pca_variance": args.pca_variance,
@@ -513,6 +565,21 @@ def build_arg_parser() -> argparse.ArgumentParser:
         type=str,
         default=None,
         help="Optional end date, for example 2026-07-01. Defaults to current UTC time.",
+    )
+
+    parser.add_argument(
+        "--feed",
+        type=str,
+        default="sip",
+        choices=["iex", "sip"],
+        help="Alpaca market data feed. Use 'iex' for free real-time IEX data or 'sip' for delayed/full-market SIP data.",
+    )
+
+    parser.add_argument(
+        "--data-delay-minutes",
+        type=int,
+        default=20,
+        help="Minutes to subtract from current time to avoid recent SIP data restrictions.",
     )
 
     parser.add_argument(
