@@ -800,8 +800,6 @@ The video walkthrough shows:
    ```
 
 7. Alpaca paper dashboard and sanitized transition logs.
-8. Paper-trading disclaimer: **This is paper trading only — no real money is used.**
-
 ---
 
 ## Screenshots
