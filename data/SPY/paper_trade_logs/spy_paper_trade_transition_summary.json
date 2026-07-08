@@ -1,0 +1,53 @@
+{
+  "title": "SPY HW3 Paper Trading Demo Transition",
+  "paper_trading_only": true,
+  "purpose": "Sanitized paper-trading logs included for assignment explanation/video narration.",
+  "symbol": "SPY",
+  "sequence": [
+    {
+      "step": "01_dry_run_buy_decision",
+      "timestamp_utc": "2026-07-08T18:57:10.007434+00:00",
+      "probability": 0.6044548744723746,
+      "threshold": 0.6,
+      "signal": 1,
+      "desired_state": "LONG",
+      "current_position_qty": 0.0,
+      "action": "BUY",
+      "execute": false,
+      "order_status": "NO_ORDER",
+      "description": "Dry run: model generated a LONG signal for SPY and would submit a paper BUY, but execution was disabled."
+    },
+    {
+      "step": "02_paper_buy_order_submitted",
+      "timestamp_utc": "2026-07-08T18:59:02.781577+00:00",
+      "probability": 0.6044548744723746,
+      "threshold": 0.6,
+      "signal": 1,
+      "desired_state": "LONG",
+      "current_position_qty": 0.0,
+      "action": "BUY",
+      "execute": true,
+      "order_status": "PENDING_NEW",
+      "description": "Execution run: model still wanted LONG and submitted a SPY paper BUY market order."
+    },
+    {
+      "step": "03_position_confirmed_hold",
+      "timestamp_utc": "2026-07-08T19:26:12.807395+00:00",
+      "probability": 0.600105142749798,
+      "threshold": 0.6,
+      "signal": 1,
+      "desired_state": "LONG",
+      "current_position_qty": 1.0,
+      "action": "HOLD",
+      "execute": true,
+      "order_status": "NO_ORDER",
+      "description": "Follow-up run: model still wanted LONG, and the paper account was already long SPY, so no new order was submitted."
+    }
+  ],
+  "redactions": [
+    "buying_power removed",
+    "order_id removed",
+    "client_order_id removed",
+    "raw account-specific fields omitted"
+  ]
+}

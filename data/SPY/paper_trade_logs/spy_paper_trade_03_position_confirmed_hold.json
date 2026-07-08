@@ -1,0 +1,37 @@
+{
+  "step": "03_position_confirmed_hold",
+  "description": "Follow-up run: model still wanted LONG, and the paper account was already long SPY, so no new order was submitted.",
+  "paper_trading_only": true,
+  "symbol": "SPY",
+  "timestamp_utc": "2026-07-08T19:26:12.807395+00:00",
+  "model_bundle": "outputs/SPY_20260708_135454/artifacts/hw3_spy_model_bundle.joblib",
+  "market_data": {
+    "feed": "sip",
+    "data_delay_minutes": 20,
+    "latest_feature_timestamp": "2026-07-08 04:00:00+00:00",
+    "latest_close": 745.08
+  },
+  "model_decision": {
+    "probability": 0.600105142749798,
+    "threshold": 0.6,
+    "signal": 1,
+    "desired_state": "LONG"
+  },
+  "paper_account_state": {
+    "account_status": "ACTIVE",
+    "current_position_qty": 1.0
+  },
+  "trade_decision": {
+    "action": "HOLD",
+    "order_qty": 0.0,
+    "reason": "Model wants LONG and the paper account is already long.",
+    "execute": true
+  },
+  "submitted_order_sanitized": {},
+  "redactions": [
+    "buying_power removed",
+    "order_id removed",
+    "client_order_id removed",
+    "API credentials not present in original log"
+  ]
+}

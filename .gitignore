@@ -25,3 +25,11 @@ Thumbs.db
 # Logs
 *.log
 /outputs
+
+# Paper trading logs with account/order-specific information
+paper_trading/
+*_paper_trade_log_*.json
+
+# Model artifacts
+*.joblib
+*.pkl

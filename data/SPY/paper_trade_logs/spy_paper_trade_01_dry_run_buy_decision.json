@@ -1,0 +1,37 @@
+{
+  "step": "01_dry_run_buy_decision",
+  "description": "Dry run: model generated a LONG signal for SPY and would submit a paper BUY, but execution was disabled.",
+  "paper_trading_only": true,
+  "symbol": "SPY",
+  "timestamp_utc": "2026-07-08T18:57:10.007434+00:00",
+  "model_bundle": "outputs/SPY_20260708_135454/artifacts/hw3_spy_model_bundle.joblib",
+  "market_data": {
+    "feed": "sip",
+    "data_delay_minutes": 20,
+    "latest_feature_timestamp": "2026-07-08 04:00:00+00:00",
+    "latest_close": 744.93
+  },
+  "model_decision": {
+    "probability": 0.6044548744723746,
+    "threshold": 0.6,
+    "signal": 1,
+    "desired_state": "LONG"
+  },
+  "paper_account_state": {
+    "account_status": "ACTIVE",
+    "current_position_qty": 0.0
+  },
+  "trade_decision": {
+    "action": "BUY",
+    "order_qty": 1.0,
+    "reason": "Model wants LONG and there is currently no paper position.",
+    "execute": false
+  },
+  "submitted_order_sanitized": {},
+  "redactions": [
+    "buying_power removed",
+    "order_id removed",
+    "client_order_id removed",
+    "API credentials not present in original log"
+  ]
+}
