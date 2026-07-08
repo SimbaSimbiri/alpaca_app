@@ -3,3 +3,5 @@ pandas
 numpy
 matplotlib
 python-dotenv
+scikit-learn
+joblib
