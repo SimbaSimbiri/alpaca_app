@@ -200,15 +200,8 @@ def save_all_charts(
 def plot_hw3_equity_curve(
     comparison_df: pd.DataFrame,
     output_path: str | Path,
+    symbol: str = "AAPL",
 ) -> Path:
-    """
-    Plots Buy & Hold equity versus ML Signal equity.
-
-    Required columns:
-    - portfolio_value
-    - buy_hold_value
-    """
-
     required_columns = {"portfolio_value", "buy_hold_value"}
     missing = required_columns.difference(comparison_df.columns)
 
@@ -220,19 +213,10 @@ def plot_hw3_equity_curve(
 
     fig, ax = plt.subplots(figsize=(14, 7))
 
-    ax.plot(
-        comparison_df.index,
-        comparison_df["buy_hold_value"],
-        label="Buy & Hold",
-    )
+    ax.plot(comparison_df.index, comparison_df["buy_hold_value"], label="Buy & Hold")
+    ax.plot(comparison_df.index, comparison_df["portfolio_value"], label="ML Signal")
 
-    ax.plot(
-        comparison_df.index,
-        comparison_df["portfolio_value"],
-        label="ML Signal",
-    )
-
-    ax.set_title("AAPL Equity Curve: Buy & Hold vs ML Signal")
+    ax.set_title(f"{symbol} Equity Curve: Buy & Hold vs ML Signal")
     ax.set_xlabel("Date")
     ax.set_ylabel("Portfolio Value ($)")
     ax.grid(True, alpha=0.25)
@@ -248,15 +232,8 @@ def plot_hw3_equity_curve(
 def plot_hw3_drawdown(
     comparison_df: pd.DataFrame,
     output_path: str | Path,
+    symbol: str = "AAPL",
 ) -> Path:
-    """
-    Plots Buy & Hold drawdown versus ML Signal drawdown.
-
-    Required columns:
-    - drawdown
-    - buy_hold_drawdown
-    """
-
     required_columns = {"drawdown", "buy_hold_drawdown"}
     missing = required_columns.difference(comparison_df.columns)
 
@@ -268,19 +245,10 @@ def plot_hw3_drawdown(
 
     fig, ax = plt.subplots(figsize=(14, 7))
 
-    ax.plot(
-        comparison_df.index,
-        comparison_df["buy_hold_drawdown"],
-        label="Buy & Hold Drawdown",
-    )
+    ax.plot(comparison_df.index, comparison_df["buy_hold_drawdown"], label="Buy & Hold Drawdown")
+    ax.plot(comparison_df.index, comparison_df["drawdown"], label="ML Signal Drawdown")
 
-    ax.plot(
-        comparison_df.index,
-        comparison_df["drawdown"],
-        label="ML Signal Drawdown",
-    )
-
-    ax.set_title("AAPL Drawdown: Buy & Hold vs ML Signal")
+    ax.set_title(f"{symbol} Drawdown: Buy & Hold vs ML Signal")
     ax.set_xlabel("Date")
     ax.set_ylabel("Drawdown")
     ax.grid(True, alpha=0.25)
@@ -296,11 +264,8 @@ def plot_hw3_drawdown(
 def plot_hw3_pca_variance(
     fitted_pca,
     output_path: str | Path,
+    symbol: str = "AAPL",
 ) -> Path:
-    """
-    Plots individual and cumulative explained variance for selected PCA components.
-    """
-
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -310,26 +275,11 @@ def plot_hw3_pca_variance(
 
     fig, ax = plt.subplots(figsize=(12, 7))
 
-    ax.bar(
-        component_numbers,
-        explained,
-        label="Individual Explained Variance",
-    )
+    ax.bar(component_numbers, explained, label="Individual Explained Variance")
+    ax.plot(component_numbers, cumulative, marker="o", label="Cumulative Explained Variance")
+    ax.axhline(0.80, linestyle="--", label="80% Threshold")
 
-    ax.plot(
-        component_numbers,
-        cumulative,
-        marker="o",
-        label="Cumulative Explained Variance",
-    )
-
-    ax.axhline(
-        0.80,
-        linestyle="--",
-        label="80% Threshold",
-    )
-
-    ax.set_title("AAPL PCA Explained Variance")
+    ax.set_title(f"{symbol} PCA Explained Variance")
     ax.set_xlabel("Principal Component")
     ax.set_ylabel("Explained Variance Ratio")
     ax.grid(True, alpha=0.25)
@@ -345,15 +295,8 @@ def plot_hw3_pca_variance(
 def plot_hw3_ml_signals(
     test_data: pd.DataFrame,
     output_path: str | Path,
+    symbol: str = "AAPL",
 ) -> Path:
-    """
-    Plots AAPL close price and marks days where the ML signal is long.
-
-    Required columns:
-    - close
-    - ml_signal
-    """
-
     required_columns = {"close", "ml_signal"}
     missing = required_columns.difference(test_data.columns)
 
@@ -367,11 +310,7 @@ def plot_hw3_ml_signals(
 
     fig, ax = plt.subplots(figsize=(14, 7))
 
-    ax.plot(
-        test_data.index,
-        test_data["close"],
-        label="AAPL Close",
-    )
+    ax.plot(test_data.index, test_data["close"], label=f"{symbol} Close")
 
     if not long_days.empty:
         ax.scatter(
@@ -383,7 +322,7 @@ def plot_hw3_ml_signals(
             zorder=5,
         )
 
-    ax.set_title("AAPL Close Price with ML Long Signals")
+    ax.set_title(f"{symbol} Close Price with ML Long Signals")
     ax.set_xlabel("Date")
     ax.set_ylabel("Close Price ($)")
     ax.grid(True, alpha=0.25)
@@ -400,14 +339,8 @@ def plot_hw3_probability_signal(
     test_data: pd.DataFrame,
     output_path: str | Path,
     threshold: float = 0.60,
+    symbol: str = "AAPL",
 ) -> Path:
-    """
-    Plots the model's predicted probability and the long-entry threshold.
-
-    Required columns:
-    - ml_probability
-    """
-
     required_columns = {"ml_probability"}
     missing = required_columns.difference(test_data.columns)
 
@@ -431,7 +364,7 @@ def plot_hw3_probability_signal(
         label=f"Long Threshold = {threshold:.2f}",
     )
 
-    ax.set_title("AAPL ML Probability Signal")
+    ax.set_title(f"{symbol} ML Probability Signal")
     ax.set_xlabel("Date")
     ax.set_ylabel("Predicted Probability")
     ax.grid(True, alpha=0.25)
@@ -449,42 +382,40 @@ def save_hw3_charts(
     comparison_df: pd.DataFrame,
     fitted_pca,
     chart_dir: str | Path,
+    symbol: str = "AAPL",
+    threshold: float = 0.60,
 ) -> list[Path]:
-    """
-    Saves all HW3-specific charts.
-
-    Charts:
-    - equity curve comparison
-    - drawdown comparison
-    - PCA explained variance
-    - close price with ML long signals
-    - ML probability signal
-    """
-
     chart_dir = Path(chart_dir)
     chart_dir.mkdir(parents=True, exist_ok=True)
+
+    safe_symbol = symbol.lower()
 
     paths = [
         plot_hw3_equity_curve(
             comparison_df=comparison_df,
-            output_path=chart_dir / "hw3_aapl_equity_curve.png",
+            output_path=chart_dir / f"hw3_{safe_symbol}_equity_curve.png",
+            symbol=symbol,
         ),
         plot_hw3_drawdown(
             comparison_df=comparison_df,
-            output_path=chart_dir / "hw3_aapl_drawdown.png",
+            output_path=chart_dir / f"hw3_{safe_symbol}_drawdown.png",
+            symbol=symbol,
         ),
         plot_hw3_pca_variance(
             fitted_pca=fitted_pca,
-            output_path=chart_dir / "hw3_aapl_pca_variance.png",
+            output_path=chart_dir / f"hw3_{safe_symbol}_pca_variance.png",
+            symbol=symbol,
         ),
         plot_hw3_ml_signals(
             test_data=test_data,
-            output_path=chart_dir / "hw3_aapl_ml_signals.png",
+            output_path=chart_dir / f"hw3_{safe_symbol}_ml_signals.png",
+            symbol=symbol,
         ),
         plot_hw3_probability_signal(
             test_data=test_data,
-            output_path=chart_dir / "hw3_aapl_probability_signal.png",
-            threshold=0.60,
+            output_path=chart_dir / f"hw3_{safe_symbol}_probability_signal.png",
+            threshold=threshold,
+            symbol=symbol,
         ),
     ]
 
