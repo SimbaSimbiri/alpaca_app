@@ -1,20 +1,44 @@
-# Market Data Terminal + Strategy Backtesting Platform
+# Market Data Terminal + Systematic Trading Platform
 
-A Python market data and algorithmic trading research project built with Alpaca, Pandas, NumPy, scikit-learn, Matplotlib, and Tkinter.
+A Python market data, backtesting, machine-learning, and Alpaca paper-trading platform built with Alpaca, Pandas, NumPy, scikit-learn, Matplotlib, and Tkinter.
 
-This project has four main parts:
+The project combines four connected workflows:
 
 1. **Market Data Terminal**  
    A desktop Tkinter application that connects to Alpaca, downloads historical OHLCV data, streams real-time bid/ask quotes and last trade prices, and displays candlestick-style charts.
 
-2. **Technical Indicator Strategy Backtester**  
-   A reusable backtesting workflow for FINM-25000. It downloads historical daily OHLCV data from Alpaca, computes technical indicators, compares multiple long-only strategies, generates charts, calculates performance metrics, and produces a final PDF report.
+2. **Technical Indicator Backtesting Engine**  
+   A reusable long-only backtesting workflow that downloads historical daily OHLCV data from Alpaca, computes technical indicators, compares multiple strategy rules, generates charts, calculates performance metrics, and produces a PDF report.
 
-3. **Machine-Learning Trading Pipeline**  
-   A machine-learning workflow that downloads fresh Alpaca daily OHLCV data, engineers technical-indicator features, applies PCA, trains a Random Forest classifier, generates probability-based long/flat signals, backtests the ML strategy, compares it against Buy & Hold, and saves metrics/charts/artifacts.
+3. **Machine-Learning Strategy Pipeline**  
+   A machine-learning workflow that downloads fresh Alpaca daily OHLCV data, engineers technical-indicator features, applies PCA, trains a Random Forest classifier, generates probability-based long/flat signals, backtests the ML strategy, compares it against Buy & Hold, and saves model artifacts.
 
 4. **Alpaca Paper-Trading Demo**  
-   A paper-trading script that loads a saved ML model bundle, downloads fresh market data, rebuilds the latest feature row, applies the saved PCA transform, generates the latest ML signal, and optionally submits a paper order through Alpaca. This is paper trading only; no real money is used.
+   A paper-trading workflow that loads a saved ML model bundle, rebuilds the latest feature row from fresh market data, generates the current ML signal, checks the current Alpaca paper position, and optionally submits a paper market order.
+
+This is a research and educational trading system. It uses Alpaca paper trading only. It is not financial advice and is not intended for live-money trading.
+
+---
+
+## Core System Flow
+
+```text
+Market Data
+   ↓
+Feature Engineering / Technical Indicators
+   ↓
+Strategy Logic
+   ↓
+Signal Generation
+   ↓
+Backtest or Paper-Trading Decision
+   ↓
+Order Decision / Portfolio Simulation
+   ↓
+Metrics, Logs, Charts, Reports
+```
+
+The refactored package structure separates concerns so that data access, features, strategy logic, backtesting, reporting, pipelines, and UI code live in different modules.
 
 ---
 
@@ -26,48 +50,59 @@ This project has four main parts:
 - Loads API keys securely from a local `.env` file
 - Downloads historical OHLCV bars
 - Supports user-selected timeframes such as minute, hour, day, week, and month
-- Displays the most recent chart window for readability
-- Shows candlestick-style OHLCV data with volume bars
-- Colors bullish candles green and bearish candles black
-- Adds daily separators to make session boundaries easier to read
+- Displays candlestick-style OHLCV charts with volume bars
+- Shows recent OHLCV rows in a table
 - Streams real-time bid/ask quotes
 - Streams last trade prices
-- Updates the UI automatically when new live market data arrives
-- Organizes API, configuration, streaming, and UI logic into separate modules
+- Updates the UI through an event queue
+- Uses a thin root launcher with the actual UI implementation inside `market_terminal/ui/`
 
-### Technical Indicator Backtesting Platform
+### Technical Indicator Backtesting
 
 - Downloads 5+ years of daily OHLCV data from Alpaca
-- Computes technical indicators
-- Builds strategy entry and exit signals
-- Runs long-only portfolio simulations
+- Includes a sample-data mode for local testing without credentials
+- Computes trend, momentum, volatility, and volume indicators
+- Builds long-only strategy signals
+- Executes signals at the next day’s open to reduce close-price look-ahead bias
+- Simulates cash, shares, holdings, equity, trades, and drawdown
 - Compares strategies against Buy & Hold
-- Exports trades, portfolios, metrics, charts, and reports
-- Includes a sample-data mode for testing without Alpaca credentials
+- Exports trades, portfolios, metrics, charts, and PDF reports
 
-### Machine-Learning Trading Pipeline
+### Machine-Learning Strategy Pipeline
 
 - Downloads fresh Alpaca daily OHLCV data for any user-selected symbol
-- Uses the SIP data feed by default with a delayed end time to avoid recent-data subscription restrictions
-- Engineers at least 6 features across trend, momentum, volatility, volume, return, and rolling-statistic categories
-- Standardizes features and applies PCA
-- Keeps enough principal components to explain at least 80% of feature variance
-- Trains a Random Forest classifier to predict whether the next daily return is positive
-- Converts model probability into a long-only signal
+- Supports Alpaca IEX or SIP data feeds
+- Uses a delayed end time by default to avoid requesting too-recent SIP data
+- Engineers 22 normalized market features
+- Standardizes features before PCA
+- Keeps the minimum number of principal components needed to explain at least 80% of feature variance
+- Trains a Random Forest classifier
+- Predicts whether the next daily return will be positive
+- Converts predicted probability into a long/flat signal
 - Uses the rule: **Long if probability > 0.60, otherwise Flat**
 - Backtests the ML signal against Buy & Hold
-- Saves metrics, charts, train/test PCA files, test signals, round trips, and a model bundle
+- Saves model bundles for later paper-trading inference
+
+### Signal Scanner
+
+- Scans a universe of tickers
+- Trains a fresh model per symbol
+- Computes the latest probability of a positive next-day return
+- Ranks symbols by model probability
+- Identifies current long candidates based on the configured probability threshold
+- Saves scan results to CSV
 
 ### Paper Trading
 
-- Loads a saved model bundle from the machine-learning pipeline
+- Loads a saved ML model bundle
 - Downloads fresh Alpaca market data
 - Rebuilds the latest feature row
 - Applies the saved scaler and PCA transformer
 - Generates the latest probability and long/flat signal
 - Checks the current Alpaca paper position
-- Submits a paper BUY/SELL order only when explicitly run with `--execute`
-- Saves paper-trading decision logs for review and video explanation
+- Decides whether the account should BUY, SELL, or HOLD
+- Submits a paper order only when explicitly run with `--execute`
+- Saves decision logs for review and video demonstration
 
 ---
 
@@ -91,11 +126,11 @@ This project has four main parts:
 ```text
 alpaca_app/
 │
-├── app.py                          # Thin launcher for the Tkinter market terminal
-├── run_backtest.py                # Original technical-indicator strategy backtest runner
-├── run_ml_backtest.py         # Machine-learning + PCA backtest runner
-├── run_signal_scan.py         # Multi-symbol latest-signal scanner
-├── run_paper_trade.py         # Alpaca paper-trading demo runner
+├── app.py                         # Thin launcher for the Tkinter market terminal
+├── run_backtest.py                # CLI entrypoint for technical-indicator backtests
+├── run_ml_backtest.py             # CLI entrypoint for ML strategy backtests
+├── run_signal_scan.py             # CLI entrypoint for latest-signal scanning
+├── run_paper_trade.py             # CLI entrypoint for Alpaca paper-trading decisions
 ├── README.md
 ├── requirements.txt
 ├── .env.example
@@ -103,41 +138,55 @@ alpaca_app/
 │
 ├── market_terminal/
 │   ├── __init__.py
-│   ├── config.py                  # Loads Alpaca credentials from .env
-│   ├── constants.py               # Shared constants and defaults
-│   ├── data_connector.py          # Alpaca historical data + paper account validation
-│   ├── live_stream.py             # Alpaca websocket stream for terminal UI
-│   ├── indicators.py              # SMA, EMA, MACD, ADX, RSI, Bollinger, ATR, OBV, CMF
-│   ├── features.py                # Machine-learning feature engineering
-│   ├── pca_transformer.py         # StandardScaler + PCA fitting/transform logic
-│   ├── ml_model.py                # Random Forest model + probability signal logic
-│   ├── strategies.py              # Technical-indicator strategy signal rules
-│   ├── backtester.py              # Reusable long-only backtesting engine
-│   ├── performance.py             # Risk/return metrics
-│   ├── visualizations.py          # Charts
-│   └── report.py                  # PDF report generator
+│   │
+│   ├── core/
+│   │   ├── __init__.py
+│   │   ├── constants.py           # Shared constants and defaults
+│   │   ├── settings.py            # Environment variable and Alpaca credential loading
+│   │   └── time_utils.py          # Shared date/time helpers
+│   │
+│   ├── data/
+│   │   ├── __init__.py
+│   │   └── alpaca_historical.py   # Shared Alpaca historical OHLCV downloader
+│   │
+│   ├── features/
+│   │   ├── __init__.py
+│   │   ├── indicators.py          # SMA, EMA, MACD, ADX, RSI, Bollinger, ATR, OBV, CMF
+│   │   ├── feature_engineering.py # Machine-learning feature engineering
+│   │   └── pca.py                 # StandardScaler + PCA fitting/transform logic
+│   │
+│   ├── strategy/
+│   │   ├── __init__.py
+│   │   ├── technical_strategies.py # Technical-indicator strategy signal rules
+│   │   └── ml_model.py             # Random Forest model + probability signal logic
+│   │
+│   ├── backtest/
+│   │   ├── __init__.py
+│   │   ├── engine.py              # Reusable long-only backtesting engine
+│   │   └── metrics.py             # Risk/return metrics and performance summaries
+│   │
+│   ├── reporting/
+│   │   ├── __init__.py
+│   │   ├── visualizations.py      # Backtest and ML charts
+│   │   └── report.py              # PDF report generator
+│   │
+│   ├── pipelines/
+│   │   ├── __init__.py
+│   │   ├── indicator_backtest.py  # Technical-indicator backtest orchestration
+│   │   ├── ml_backtest.py         # ML strategy pipeline orchestration
+│   │   ├── signal_scan.py         # Multi-symbol signal scan orchestration
+│   │   └── paper_trade.py         # Paper-trading decision orchestration
+│   │
+│   ├── ui/
+│   │   ├── __init__.py
+│   │   └── dashboard.py           # Tkinter market terminal UI
+│   │
+│   ├── data_connector.py          # Legacy Alpaca data connector used by the UI
+│   └── live_stream.py             # Legacy Alpaca websocket stream used by the UI
 │
 ├── screenshots/                   # Terminal UI screenshots
-│
-├── charts/
-│   ├── AAPL/                      # Committed AAPL technical-strategy charts
-│   └── SPY/                       # Committed SPY machine-learning charts
-│       ├── spy_equity_curve.png
-│       ├── spy_drawdown.png
-│       ├── spy_ml_signals.png
-│       ├── spy_pca_variance.png
-│       └── spy_probability_signal.png
-│
-├── data/
-│   ├── AAPL/                      # Committed AAPL metrics
-│   └── SPY/                       # Committed SPY metrics and sanitized paper-trade logs
-│       ├── spy_performance_metrics.csv
-│       └── paper_trade_logs/
-│           ├── spy_paper_trade_01_dry_run_buy_decision.json
-│           ├── spy_paper_trade_02_paper_buy_order_submitted.json
-│           ├── spy_paper_trade_03_position_confirmed_hold.json
-│           └── spy_paper_trade_transition_summary.json
-│
+├── charts/                        # Committed chart examples
+├── data/                          # Committed metrics and sanitized demo logs
 ├── reports/                       # Optional manually copied reports
 └── outputs/                       # Auto-generated run outputs; usually ignored by Git
 ```
@@ -183,7 +232,7 @@ pip install -r requirements.txt
 
 ## API Key Setup
 
-This project requires Alpaca API credentials.
+This project requires Alpaca API credentials for real Alpaca data access and paper trading.
 
 Create a local `.env` file in the project root. Do not commit `.env` to GitHub.
 
@@ -193,80 +242,61 @@ ALPACA_SECRET_KEY=replace_me
 ALPACA_DATA_FEED=sip
 ```
 
-The machine-learning scripts also accept these common Alpaca environment variable names:
+The settings loader also accepts common Alpaca environment variable names:
 
 ```env
 APCA_API_KEY_ID=replace_me
 APCA_API_SECRET_KEY=replace_me
 ```
 
-The ML backtest and paper-trading scripts default to the Alpaca SIP feed and subtract 20 minutes from the latest timestamp by default. This avoids requesting very recent SIP data that may not be available on some Alpaca subscriptions.
+Recommended `.gitignore` entry:
+
+```text
+.env
+outputs/
+__pycache__/
+*.pyc
+```
+
+The ML backtest and paper-trading workflows default to Alpaca SIP data with a delayed end time. This avoids requesting very recent SIP data that may not be available on some Alpaca subscriptions.
 
 ---
 
 ## Running the Market Terminal UI
 
-After setting up the virtual environment and `.env` file, run:
+Launch the terminal:
 
 ```bash
 python app.py
 ```
 
-Recommended tickers for testing:
+Recommended test tickers:
 
-- MSFT
-- AAPL
-- SPY
-- QQQ
-- NVDA
-- TSLA
+```text
+MSFT
+AAPL
+SPY
+QQQ
+NVDA
+TSLA
+```
 
 ### How to Use the Terminal
 
-1. Open the app with:
-
-   ```bash
-   python app.py
-   ```
-
-2. Enter a ticker symbol, such as `MSFT`, `AAPL`, or `NVDA`.
+1. Start the app with `python app.py`.
+2. Enter a ticker symbol.
 3. Select a timeframe.
 4. Click **Load Historical Data**.
-5. The chart displays recent OHLCV candlestick bars with volume.
+5. Review the OHLCV candlestick chart and recent-bars table.
 6. Click **Start Live Stream**.
-7. The real-time quote panel waits for live bid, ask, and last trade updates.
+7. Watch the bid, ask, last trade, quote time, and trade time update.
 8. Click **Stop Stream** to stop the websocket stream.
-
-### Historical Data Viewer
-
-The terminal chart displays:
-
-- Open, high, low, and close candles
-- Green bullish candles where close is greater than or equal to open
-- Black bearish candles where close is below open
-- Volume bars beneath the candles
-- Day separators at session boundaries
-- A recent OHLCV table below the chart
-
-The app downloads more data than it displays so the backend can work with historical data while keeping the UI readable.
-
-### Real-Time Quote UI
-
-The real-time quote panel displays:
-
-- Current bid
-- Current ask
-- Last trade price
-- Quote timestamp
-- Trade timestamp
-
-The live stream is event-driven, so the fields update when Alpaca sends new quote or trade events.
 
 ### Market Hours Note
 
-Historical data can load outside regular market hours.
+Historical bars can load outside regular market hours.
 
-Real-time quotes and trades are easiest to observe during regular U.S. market hours. Outside market hours, the websocket may connect successfully but receive few or no quote/trade updates depending on the ticker, feed, and market activity.
+Live quote and trade updates are easiest to observe during regular U.S. market hours. Outside market hours, the websocket may connect successfully but receive few or no events depending on ticker, feed, and market activity.
 
 ---
 
@@ -287,31 +317,57 @@ python run_backtest.py --ticker QQQ --years 5
 python run_backtest.py --ticker NVDA --years 5
 ```
 
-Optional commission/slippage assumption:
-
-```bash
-python run_backtest.py --ticker MSFT --years 5 --commission 1.00
-```
-
-Local test without Alpaca credentials:
+Run with sample data and no Alpaca credentials:
 
 ```bash
 python run_backtest.py --ticker SAMPLE --years 5 --sample
 ```
 
-The `--sample` flag is available for local verification; Alpaca data is used for the final results.
+Add a commission or slippage assumption:
+
+```bash
+python run_backtest.py --ticker MSFT --years 5 --commission 1.00
+```
+
+Allow fractional shares:
+
+```bash
+python run_backtest.py --ticker MSFT --years 5 --fractional
+```
+
+### Technical Backtest Outputs
+
+Each run creates a timestamped folder:
+
+```text
+outputs/MSFT_YYYYMMDD_HHMMSS/
+├── data/
+│   ├── MSFT_daily_ohlcv_indicators_signals.csv
+│   ├── MSFT_performance_metrics.csv
+│   ├── trend_following_portfolio.csv
+│   ├── trend_following_trades.csv
+│   └── ...
+├── charts/
+│   ├── trend_following_price_signals.png
+│   ├── mean_reversion_price_signals.png
+│   ├── custom_volume-confirmed_trend_pullback_price_signals.png
+│   ├── equity_curve_comparison.png
+│   └── drawdown_comparison.png
+└── reports/
+    └── MSFT_final_report.pdf
+```
 
 ---
 
 ## Running the Machine-Learning Backtest
 
-The machine-learning pipeline is run through:
+Run the ML strategy pipeline:
 
 ```bash
 python run_ml_backtest.py --symbol SPY
 ```
 
-The command above downloads fresh Alpaca daily OHLCV data, builds ML features, applies PCA, trains a Random Forest classifier, generates long/flat signals, backtests the strategy, saves charts, saves metrics, and saves a model/PCA bundle for paper trading.
+The command downloads fresh daily OHLCV data, builds ML features, applies PCA, trains a Random Forest classifier, generates long/flat signals, backtests the ML strategy, compares it against Buy & Hold, saves charts, saves metrics, and saves a model/PCA bundle for paper trading.
 
 The default feed is SIP. The default data delay is 20 minutes.
 
@@ -319,6 +375,12 @@ Equivalent explicit command:
 
 ```bash
 python run_ml_backtest.py --symbol SPY --feed sip --data-delay-minutes 20
+```
+
+Use the IEX feed:
+
+```bash
+python run_ml_backtest.py --symbol SPY --feed iex
 ```
 
 Run another symbol:
@@ -341,7 +403,7 @@ Allow fractional shares in the backtest:
 python run_ml_backtest.py --symbol SPY --allow-fractional-shares
 ```
 
-Adjust the long-signal threshold:
+Adjust the probability threshold:
 
 ```bash
 python run_ml_backtest.py --symbol SPY --threshold 0.60
@@ -349,7 +411,7 @@ python run_ml_backtest.py --symbol SPY --threshold 0.60
 
 ### Machine-Learning Backtest Output
 
-Each machine-learning run creates a timestamped output folder:
+Each ML run creates a timestamped output folder:
 
 ```text
 outputs/SPY_YYYYMMDD_HHMMSS/
@@ -383,13 +445,13 @@ outputs/SPY_YYYYMMDD_HHMMSS/
     └── hw3_spy_model_bundle.joblib
 ```
 
-The `artifacts/hw3_spy_model_bundle.joblib` file is used by the paper-trading script. Model bundle files are generated outputs and should generally not be committed to GitHub.
+The internal output filenames still use the `hw3_` prefix for compatibility with existing generated outputs. The production-facing runner names have already been cleaned up.
 
 ---
 
 ## Running the Signal Scanner
 
-The scanner checks multiple tickers and ranks them by the latest model probability.
+Run the default scan:
 
 ```bash
 python run_signal_scan.py
@@ -401,7 +463,7 @@ Scan a custom list:
 python run_signal_scan.py --symbols SPY AAPL MSFT QQQ NVDA TSLA META AMZN GOOGL
 ```
 
-Scan SPY-related ETFs:
+Scan a broader ETF universe:
 
 ```bash
 python run_signal_scan.py --symbols SPY VOO IVV SPLG SPYM VTI ITOT SCHB IWB VV DIA RSP XLK XLF XLY XLV XLI XLC XLP XLE XLB XLU XLRE
@@ -411,7 +473,7 @@ The scanner prints:
 
 - latest probability
 - latest signal
-- desired state, LONG or FLAT
+- desired state: LONG or FLAT
 - model test accuracy
 - number of PCA components
 - total explained variance
@@ -422,13 +484,17 @@ A symbol becomes a long candidate when:
 latest_probability > 0.60
 ```
 
-SPY was selected for the final paper-trading demo because the model generated a valid LONG signal using the same probability threshold.
+Signal scan results are saved under:
+
+```text
+outputs/signal_scans/
+```
 
 ---
 
 ## Running the Paper-Trading Demo
 
-The paper-trading script loads a saved model bundle and generates the latest trading decision.
+The paper-trading workflow loads a saved model bundle and generates the latest trading decision.
 
 ### 1. Dry run first
 
@@ -467,7 +533,7 @@ Run the same command again after the order has been submitted:
 python run_paper_trade.py --model-bundle outputs\SPY_<timestamp>\artifacts\hw3_spy_model_bundle.joblib --qty 1 --execute
 ```
 
-If the model still wants LONG and the account is already long, the script should print:
+When the model still wants LONG and the paper account is already long, the script should print:
 
 ```text
 Action: HOLD
@@ -483,66 +549,7 @@ Signal = 0 and currently long        -> SELL
 Signal = 0 and no current position   -> HOLD
 ```
 
-The paper-trading script is intentionally conservative: it does not submit an order unless `--execute` is provided.
-
----
-
-## SPY Demo Evidence
-
-SPY was used as the final paper-trading demonstration ticker. The committed SPY files include charts, metrics, and sanitized paper-trading logs.
-
-### SPY Performance Metrics
-
-The SPY performance table is saved here:
-
-```text
-data/SPY/spy_performance_metrics.csv
-```
-
-### SPY Charts
-
-#### SPY Equity Curve
-
-![SPY Equity Curve](charts/SPY/spy_equity_curve.png)
-
-#### SPY Drawdown
-
-![SPY Drawdown](charts/SPY/spy_drawdown.png)
-
-#### SPY ML Long Signals
-
-![SPY ML Long Signals](charts/SPY/spy_ml_signals.png)
-
-#### SPY PCA Explained Variance
-
-![SPY PCA Explained Variance](charts/SPY/spy_pca_variance.png)
-
-#### SPY Probability Signal
-
-![SPY Probability Signal](charts/SPY/spy_probability_signal.png)
-
-### SPY Paper-Trade Transition Logs
-
-The raw paper-trading logs were sanitized before being committed. Account-specific values such as buying power, order IDs, client order IDs, and raw account details were removed.
-
-Committed sanitized logs:
-
-```text
-data/SPY/paper_trade_logs/spy_paper_trade_01_dry_run_buy_decision.json
-data/SPY/paper_trade_logs/spy_paper_trade_02_paper_buy_order_submitted.json
-data/SPY/paper_trade_logs/spy_paper_trade_03_position_confirmed_hold.json
-data/SPY/paper_trade_logs/spy_paper_trade_transition_summary.json
-```
-
-The transition shown by these logs is:
-
-```text
-1. Dry run: the SPY model wanted LONG and the action would be BUY.
-2. Execute run: the SPY model wanted LONG and a paper BUY order was submitted.
-3. Follow-up run: the account was already long SPY, so the action changed to HOLD.
-```
-
-This is useful for the project video because it shows the full model-to-order workflow without exposing sensitive account/order details.
+The paper-trading script is intentionally conservative. It does not submit an order unless `--execute` is provided.
 
 ---
 
@@ -596,7 +603,7 @@ Purpose:
 
 ### Strategy 1: Trend Following
 
-This strategy tries to participate when price is already trending upward and the trend has enough strength.
+This strategy attempts to participate when price is already trending upward and the trend has enough strength.
 
 Entry:
 
@@ -718,7 +725,8 @@ The strategy is long-only. It does not short, does not use leverage, and does no
 - No leverage
 - No short selling
 - Whole-share position sizing by default
-- Close-based signals execute at the next day's open to reduce look-ahead bias
+- Fractional share sizing is optional
+- Close-based signals execute at the next day’s open to reduce look-ahead bias
 - Default commission is zero
 - Commission can be changed with the `--commission` flag
 - Daily returns are computed from portfolio value changes
@@ -739,9 +747,10 @@ The reports and CSV metrics include:
 - Maximum Drawdown
 - Win Rate
 - Round Trips
-- Market Exposure
+- Number of trades
+- Market exposure
 
-Example comparison table format:
+Example comparison table:
 
 ```text
 Strategy      Ending Value   Total Return   CAGR   Volatility   Sharpe   Sortino   Max Drawdown   Win Rate   Exposure
@@ -769,37 +778,45 @@ The machine-learning workflow generates:
 
 ---
 
-## Video Demonstration Notes
+## SPY Demo Evidence
 
-The video walkthrough shows:
+SPY was used as the paper-trading demonstration ticker. The committed SPY files include charts, metrics, and sanitized paper-trading logs.
 
-1. Project structure.
-2. Machine-learning backtest execution:
+### SPY Performance Metrics
 
-   ```bash
-   python run_ml_backtest.py --symbol SPY
-   ```
+```text
+data/SPY/spy_performance_metrics.csv
+```
 
-3. Performance metrics and generated charts.
-4. Signal scan execution:
+### SPY Charts
 
-   ```bash
-   python run_signal_scan.py --symbols SPY AAPL MSFT QQQ NVDA TSLA
-   ```
+```text
+charts/SPY/spy_equity_curve.png
+charts/SPY/spy_drawdown.png
+charts/SPY/spy_ml_signals.png
+charts/SPY/spy_pca_variance.png
+charts/SPY/spy_probability_signal.png
+```
 
-5. Paper-trading dry run:
+### SPY Paper-Trade Transition Logs
 
-   ```bash
-   python run_paper_trade.py --model-bundle outputs\SPY_<timestamp>\artifacts\hw3_spy_model_bundle.joblib
-   ```
+```text
+data/SPY/paper_trade_logs/spy_paper_trade_01_dry_run_buy_decision.json
+data/SPY/paper_trade_logs/spy_paper_trade_02_paper_buy_order_submitted.json
+data/SPY/paper_trade_logs/spy_paper_trade_03_position_confirmed_hold.json
+data/SPY/paper_trade_logs/spy_paper_trade_transition_summary.json
+```
 
-6. Paper-trading execution command:
+The transition shown by these logs is:
 
-   ```bash
-   python run_paper_trade.py --model-bundle outputs\SPY_<timestamp>\artifacts\hw3_spy_model_bundle.joblib --qty 1 --execute
-   ```
+```text
+1. Dry run: the SPY model wanted LONG and the action would be BUY.
+2. Execute run: the SPY model wanted LONG and a paper BUY order was submitted.
+3. Follow-up run: the account was already long SPY, so the action changed to HOLD.
+```
 
-7. Alpaca paper dashboard and sanitized transition logs.
+This gives the video walkthrough a clear model-to-order lifecycle without exposing sensitive account or order details.
+
 ---
 
 ## Screenshots
@@ -821,3 +838,94 @@ The video walkthrough shows:
 ![NVDA Most Recent Data](screenshots/ui_running_2.png)
 
 ---
+
+## Video Demonstration Outline
+
+The video walkthrough can follow this sequence:
+
+1. Show the refactored project structure.
+2. Launch the market terminal:
+
+   ```bash
+   python app.py
+   ```
+
+3. Run a technical-indicator sample backtest:
+
+   ```bash
+   python run_backtest.py --ticker SAMPLE --years 1 --sample
+   ```
+
+4. Run the ML backtest:
+
+   ```bash
+   python run_ml_backtest.py --symbol SPY
+   ```
+
+5. Open the generated metrics and charts.
+6. Run a signal scan:
+
+   ```bash
+   python run_signal_scan.py --symbols SPY AAPL MSFT QQQ NVDA TSLA
+   ```
+
+7. Run a paper-trading dry run:
+
+   ```bash
+   python run_paper_trade.py --model-bundle outputs\SPY_<timestamp>\artifacts\hw3_spy_model_bundle.joblib
+   ```
+
+8. Run a paper-trading execution command:
+
+   ```bash
+   python run_paper_trade.py --model-bundle outputs\SPY_<timestamp>\artifacts\hw3_spy_model_bundle.joblib --qty 1 --execute
+   ```
+
+9. Show the Alpaca paper dashboard.
+10. Show the sanitized paper-trading transition logs.
+
+---
+
+## Safety and Limitations
+
+This project is for educational research and paper trading.
+
+Limitations:
+
+- No live-money trading is used.
+- No tax modeling.
+- No market impact modeling.
+- No partial-fill modeling.
+- No bid/ask spread modeling unless represented through a commission/slippage assumption.
+- No leverage.
+- No short selling.
+- Paper-trading results may differ from live execution.
+- Model performance may degrade out of sample.
+- Backtest results are not guarantees of future performance.
+
+---
+
+## Quick Command Reference
+
+```bash
+# Launch terminal UI
+python app.py
+
+# Technical-indicator backtest with sample data
+python run_backtest.py --ticker SAMPLE --years 1 --sample
+
+# Technical-indicator backtest with Alpaca data
+python run_backtest.py --ticker MSFT --years 5
+
+# Machine-learning backtest
+python run_ml_backtest.py --symbol SPY
+
+# Signal scan
+python run_signal_scan.py --symbols SPY AAPL MSFT QQQ NVDA TSLA
+
+# Paper-trading dry run
+python run_paper_trade.py --model-bundle outputs\SPY_<timestamp>\artifacts\hw3_spy_model_bundle.joblib
+
+# Paper-trading execution
+python run_paper_trade.py --model-bundle outputs\SPY_<timestamp>\artifacts\hw3_spy_model_bundle.joblib --qty 1 --execute
+```
