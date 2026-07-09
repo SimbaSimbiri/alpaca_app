@@ -15,6 +15,7 @@ from market_terminal.data.alpaca_historical import download_daily_ohlcv_from_alp
 from market_terminal.execution.alpaca_broker import AlpacaBroker
 from market_terminal.features.feature_engineering import add_ml_features
 from market_terminal.features.pca import transform_pca
+from market_terminal.risk.risk_manager import RiskConfig, RiskManager
 from market_terminal.strategy.ml_model import predict_up_probability, probability_to_signal
 
 
@@ -196,10 +197,20 @@ def run_paper_trade_pipeline(args: argparse.Namespace) -> None:
 
     currently_long = current_qty > 0
 
+    buying_power = float(account.buying_power)
+
+    risk_manager = RiskManager(
+        RiskConfig(
+            max_order_qty=float(args.max_order_qty),
+            min_buying_power_after_order=float(args.min_buying_power_after_order),
+            allow_short_selling=False,
+        )
+    )
+
     print("\nPaper Account State")
     print("-" * 40)
     print(f"Account status: {account.status}")
-    print(f"Buying power: ${float(account.buying_power):,.2f}")
+    print(f"Buying power: ${buying_power:,.2f}")
     print(f"Current {symbol} paper position quantity: {current_qty}")
 
     # ------------------------------------------------------------
@@ -234,13 +245,27 @@ def run_paper_trade_pipeline(args: argparse.Namespace) -> None:
     print(f"Quantity: {order_qty}")
     print(f"Reason: {reason}")
 
+    risk_decision = risk_manager.approve_paper_trade(
+        action=action,
+        symbol=symbol,
+        order_qty=order_qty,
+        current_position_qty=current_qty,
+        latest_price=latest_close,
+        buying_power=buying_power,
+    )
+
+    print("\nRisk Check")
+    print("-" * 40)
+    print(f"Approved: {risk_decision.approved}")
+    print(f"Reason: {risk_decision.reason}")
+
     # ------------------------------------------------------------
     # 4. Submit paper order only if --execute is provided
     # ------------------------------------------------------------
 
     submitted_order = None
 
-    if action in {"BUY", "SELL"} and args.execute:
+    if action in {"BUY", "SELL"} and args.execute and risk_decision.approved:
         submitted_order = broker.submit_market_order(
             symbol=symbol,
             side=action,
@@ -254,6 +279,12 @@ def run_paper_trade_pipeline(args: argparse.Namespace) -> None:
         print(f"Side: {submitted_order.side}")
         print(f"Quantity: {submitted_order.qty}")
         print(f"Status: {submitted_order.status}")
+
+    elif action in {"BUY", "SELL"} and not risk_decision.approved:
+        print("\nRisk Rejection")
+        print("-" * 40)
+        print("No paper order was submitted because the risk manager rejected the decision.")
+        print(risk_decision.reason)
 
     elif action in {"BUY", "SELL"} and not args.execute:
         print("\nDry Run")
@@ -290,7 +321,11 @@ def run_paper_trade_pipeline(args: argparse.Namespace) -> None:
         "order_qty": order_qty,
         "reason": reason,
         "execute": args.execute,
-        "submitted_order":  AlpacaBroker.serialize_order(submitted_order),
+        "risk_approved": risk_decision.approved,
+        "risk_reason": risk_decision.reason,
+        "max_order_qty": float(args.max_order_qty),
+        "min_buying_power_after_order": float(args.min_buying_power_after_order),
+        "submitted_order": AlpacaBroker.serialize_order(submitted_order),
     }
 
     log_path = save_paper_trade_log(

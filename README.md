@@ -101,6 +101,10 @@ The refactored package structure separates concerns so that data access, feature
 - Generates the latest probability and long/flat signal
 - Checks the current Alpaca paper position
 - Decides whether the account should BUY, SELL, or HOLD
+- Applies a risk-management gate before paper orders are submitted
+- Blocks oversized orders based on `--max-order-qty`
+- Blocks sell orders that would create a short position
+- Can enforce minimum buying power after a buy order
 - Submits a paper order only when explicitly run with `--execute`
 - Saves decision logs for review and video demonstration
 
@@ -163,6 +167,10 @@ alpaca_app/
 │   │   ├── __init__.py
 │   │   ├── technical_strategies.py # Technical-indicator strategy signal rules
 │   │   └── ml_model.py             # Random Forest model + probability signal logic
+│   │
+│   ├── risk/
+│   │   ├── __init__.py
+│   │   └── risk_manager.py        # Paper-trading risk checks before order submission
 │   │
 │   ├── backtest/
 │   │   ├── __init__.py
