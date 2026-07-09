@@ -93,9 +93,9 @@ alpaca_app/
 │
 ├── app.py                         # Tkinter market terminal
 ├── run_backtest.py                # Original technical-indicator strategy backtest runner
-├── run_hw3_ml_backtest.py         # Machine-learning + PCA backtest runner
-├── run_hw3_signal_scan.py         # Multi-symbol latest-signal scanner
-├── run_hw3_paper_trade.py         # Alpaca paper-trading demo runner
+├── run_ml_backtest.py         # Machine-learning + PCA backtest runner
+├── run_signal_scan.py         # Multi-symbol latest-signal scanner
+├── run_paper_trade.py         # Alpaca paper-trading demo runner
 ├── README.md
 ├── requirements.txt
 ├── .env.example
@@ -308,7 +308,7 @@ The `--sample` flag is available for local verification; Alpaca data is used for
 The machine-learning pipeline is run through:
 
 ```bash
-python run_hw3_ml_backtest.py --symbol SPY
+python run_ml_backtest.py --symbol SPY
 ```
 
 The command above downloads fresh Alpaca daily OHLCV data, builds ML features, applies PCA, trains a Random Forest classifier, generates long/flat signals, backtests the strategy, saves charts, saves metrics, and saves a model/PCA bundle for paper trading.
@@ -318,33 +318,33 @@ The default feed is SIP. The default data delay is 20 minutes.
 Equivalent explicit command:
 
 ```bash
-python run_hw3_ml_backtest.py --symbol SPY --feed sip --data-delay-minutes 20
+python run_ml_backtest.py --symbol SPY --feed sip --data-delay-minutes 20
 ```
 
 Run another symbol:
 
 ```bash
-python run_hw3_ml_backtest.py --symbol AAPL
-python run_hw3_ml_backtest.py --symbol MSFT
-python run_hw3_ml_backtest.py --symbol QQQ
+python run_ml_backtest.py --symbol AAPL
+python run_ml_backtest.py --symbol MSFT
+python run_ml_backtest.py --symbol QQQ
 ```
 
 Use custom dates:
 
 ```bash
-python run_hw3_ml_backtest.py --symbol SPY --start 2021-07-01 --end 2026-07-01
+python run_ml_backtest.py --symbol SPY --start 2021-07-01 --end 2026-07-01
 ```
 
 Allow fractional shares in the backtest:
 
 ```bash
-python run_hw3_ml_backtest.py --symbol SPY --allow-fractional-shares
+python run_ml_backtest.py --symbol SPY --allow-fractional-shares
 ```
 
 Adjust the long-signal threshold:
 
 ```bash
-python run_hw3_ml_backtest.py --symbol SPY --threshold 0.60
+python run_ml_backtest.py --symbol SPY --threshold 0.60
 ```
 
 ### Machine-Learning Backtest Output
@@ -392,19 +392,19 @@ The `artifacts/hw3_spy_model_bundle.joblib` file is used by the paper-trading sc
 The scanner checks multiple tickers and ranks them by the latest model probability.
 
 ```bash
-python run_hw3_signal_scan.py
+python run_signal_scan.py
 ```
 
 Scan a custom list:
 
 ```bash
-python run_hw3_signal_scan.py --symbols SPY AAPL MSFT QQQ NVDA TSLA META AMZN GOOGL
+python run_signal_scan.py --symbols SPY AAPL MSFT QQQ NVDA TSLA META AMZN GOOGL
 ```
 
 Scan SPY-related ETFs:
 
 ```bash
-python run_hw3_signal_scan.py --symbols SPY VOO IVV SPLG SPYM VTI ITOT SCHB IWB VV DIA RSP XLK XLF XLY XLV XLI XLC XLP XLE XLB XLU XLRE
+python run_signal_scan.py --symbols SPY VOO IVV SPLG SPYM VTI ITOT SCHB IWB VV DIA RSP XLK XLF XLY XLV XLI XLC XLP XLE XLB XLU XLRE
 ```
 
 The scanner prints:
@@ -435,7 +435,7 @@ The paper-trading script loads a saved model bundle and generates the latest tra
 A dry run is the default behavior. It prints the decision but does not submit an order.
 
 ```bash
-python run_hw3_paper_trade.py --model-bundle outputs\SPY_<timestamp>\artifacts\hw3_spy_model_bundle.joblib
+python run_paper_trade.py --model-bundle outputs\SPY_<timestamp>\artifacts\hw3_spy_model_bundle.joblib
 ```
 
 Expected dry-run output includes:
@@ -454,7 +454,7 @@ Dry Run: No paper order was submitted.
 Only use `--execute` after reviewing the dry run.
 
 ```bash
-python run_hw3_paper_trade.py --model-bundle outputs\SPY_<timestamp>\artifacts\hw3_spy_model_bundle.joblib --qty 1 --execute
+python run_paper_trade.py --model-bundle outputs\SPY_<timestamp>\artifacts\hw3_spy_model_bundle.joblib --qty 1 --execute
 ```
 
 This submits a paper market order only. No real money is used.
@@ -464,7 +464,7 @@ This submits a paper market order only. No real money is used.
 Run the same command again after the order has been submitted:
 
 ```bash
-python run_hw3_paper_trade.py --model-bundle outputs\SPY_<timestamp>\artifacts\hw3_spy_model_bundle.joblib --qty 1 --execute
+python run_paper_trade.py --model-bundle outputs\SPY_<timestamp>\artifacts\hw3_spy_model_bundle.joblib --qty 1 --execute
 ```
 
 If the model still wants LONG and the account is already long, the script should print:
@@ -777,26 +777,26 @@ The video walkthrough shows:
 2. Machine-learning backtest execution:
 
    ```bash
-   python run_hw3_ml_backtest.py --symbol SPY
+   python run_ml_backtest.py --symbol SPY
    ```
 
 3. Performance metrics and generated charts.
 4. Signal scan execution:
 
    ```bash
-   python run_hw3_signal_scan.py --symbols SPY AAPL MSFT QQQ NVDA TSLA
+   python run_signal_scan.py --symbols SPY AAPL MSFT QQQ NVDA TSLA
    ```
 
 5. Paper-trading dry run:
 
    ```bash
-   python run_hw3_paper_trade.py --model-bundle outputs\SPY_<timestamp>\artifacts\hw3_spy_model_bundle.joblib
+   python run_paper_trade.py --model-bundle outputs\SPY_<timestamp>\artifacts\hw3_spy_model_bundle.joblib
    ```
 
 6. Paper-trading execution command:
 
    ```bash
-   python run_hw3_paper_trade.py --model-bundle outputs\SPY_<timestamp>\artifacts\hw3_spy_model_bundle.joblib --qty 1 --execute
+   python run_paper_trade.py --model-bundle outputs\SPY_<timestamp>\artifacts\hw3_spy_model_bundle.joblib --qty 1 --execute
    ```
 
 7. Alpaca paper dashboard and sanitized transition logs.
