@@ -143,7 +143,10 @@ alpaca_app/
 │   │   ├── constants.py           # Shared constants and defaults
 │   │   ├── settings.py            # Environment variable and Alpaca credential loading
 │   │   └── time_utils.py          # Shared date/time helpers
-│   │
+│   ├── execution/
+│   │   ├── __init__.py
+│   │   └── alpaca_broker.py       # Alpaca paper-trading account, position, and order wrapper
+│   │   
 │   ├── data/
 │   │   ├── __init__.py
 │   │   ├── alpaca_historical.py   # Shared Alpaca historical OHLCV downloader

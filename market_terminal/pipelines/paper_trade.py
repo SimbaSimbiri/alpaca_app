@@ -10,9 +10,9 @@ import joblib
 import numpy as np
 import pandas as pd
 
-from market_terminal.core.settings import get_alpaca_credentials
 from market_terminal.core.time_utils import years_ago
 from market_terminal.data.alpaca_historical import download_daily_ohlcv_from_alpaca
+from market_terminal.execution.alpaca_broker import AlpacaBroker
 from market_terminal.features.feature_engineering import add_ml_features
 from market_terminal.features.pca import transform_pca
 from market_terminal.strategy.ml_model import predict_up_probability, probability_to_signal
@@ -40,137 +40,15 @@ def load_model_bundle(model_bundle_path: Path) -> dict[str, Any]:
     return bundle
 
 
-def get_trading_client():
-    """
-    Creates an Alpaca paper trading client.
-
-    This is paper trading only. No real money is used.
-    """
-
-    try:
-        from alpaca.trading.client import TradingClient
-    except ImportError as exc:
-        raise ImportError(
-            "alpaca-py is not installed. Install it with:\n"
-            "pip install alpaca-py"
-        ) from exc
-
-    api_key, api_secret = get_alpaca_credentials()
-
-    return TradingClient(
-        api_key=api_key,
-        secret_key=api_secret,
-        paper=True,
-    )
-
-
-def get_current_position_qty(trading_client, symbol: str) -> float:
-    """
-    Returns current paper position quantity for a symbol.
-
-    If no position exists, returns 0.
-    """
-
-    try:
-        position = trading_client.get_open_position(symbol)
-        return float(position.qty)
-
-    except Exception as exc:
-        message = str(exc).lower()
-
-        no_position_messages = [
-            "position does not exist",
-            "404",
-            "not found",
-        ]
-
-        if any(text in message for text in no_position_messages):
-            return 0.0
-
-        raise
-
-
-def submit_market_order(
-    trading_client,
-    symbol: str,
-    side: str,
-    qty: float,
-):
-    """
-    Submits a paper market order.
-    """
-
-    try:
-        from alpaca.trading.enums import OrderSide, TimeInForce
-        from alpaca.trading.requests import MarketOrderRequest
-    except ImportError as exc:
-        raise ImportError(
-            "alpaca-py is not installed. Install it with:\n"
-            "pip install alpaca-py"
-        ) from exc
-
-    if qty <= 0:
-        raise ValueError("Order quantity must be positive.")
-
-    if side.upper() == "BUY":
-        order_side = OrderSide.BUY
-    elif side.upper() == "SELL":
-        order_side = OrderSide.SELL
-    else:
-        raise ValueError("side must be either BUY or SELL.")
-
-    order_request = MarketOrderRequest(
-        symbol=symbol,
-        qty=qty,
-        side=order_side,
-        time_in_force=TimeInForce.DAY,
-    )
-
-    return trading_client.submit_order(order_data=order_request)
-
-
-def serialize_order(order) -> dict[str, Any]:
-    """
-    Converts an Alpaca order object into a JSON-friendly dictionary.
-    """
-
-    if order is None:
-        return {}
-
-    fields = [
-        "id",
-        "client_order_id",
-        "symbol",
-        "side",
-        "qty",
-        "filled_qty",
-        "type",
-        "time_in_force",
-        "status",
-        "submitted_at",
-        "filled_at",
-    ]
-
-    output = {}
-
-    for field in fields:
-        value = getattr(order, field, None)
-
-        if value is not None:
-            output[field] = str(value)
-
-    return output
-
-
 def build_latest_signal(
-    symbol: str,
-    model,
-    fitted_pca,
-    feature_columns: list[str],
-    threshold: float,
-    years: int,
-    feed: str,
-    data_delay_minutes: int,
+        symbol: str,
+        model,
+        fitted_pca,
+        feature_columns: list[str],
+        threshold: float,
+        years: int,
+        feed: str,
+        data_delay_minutes: int,
 ) -> tuple[pd.DataFrame, pd.DataFrame, float, int]:
     """
     Downloads fresh SIP/IEX data, rebuilds features, applies saved PCA,
@@ -228,9 +106,9 @@ def build_latest_signal(
 
 
 def save_paper_trade_log(
-    log: dict[str, Any],
-    model_bundle_path: Path,
-    symbol: str,
+        log: dict[str, Any],
+        model_bundle_path: Path,
+        symbol: str,
 ) -> Path:
     """
     Saves the paper-trading decision log beside the model output folder.
@@ -311,13 +189,10 @@ def run_paper_trade_pipeline(args: argparse.Namespace) -> None:
     # 2. Check paper account and current position
     # ------------------------------------------------------------
 
-    trading_client = get_trading_client()
-    account = trading_client.get_account()
+    broker = AlpacaBroker(paper=True)
+    account = broker.get_account()
 
-    current_qty = get_current_position_qty(
-        trading_client=trading_client,
-        symbol=symbol,
-    )
+    current_qty = broker.get_current_position_qty(symbol)
 
     currently_long = current_qty > 0
 
@@ -366,8 +241,7 @@ def run_paper_trade_pipeline(args: argparse.Namespace) -> None:
     submitted_order = None
 
     if action in {"BUY", "SELL"} and args.execute:
-        submitted_order = submit_market_order(
-            trading_client=trading_client,
+        submitted_order = broker.submit_market_order(
             symbol=symbol,
             side=action,
             qty=order_qty,
@@ -416,7 +290,7 @@ def run_paper_trade_pipeline(args: argparse.Namespace) -> None:
         "order_qty": order_qty,
         "reason": reason,
         "execute": args.execute,
-        "submitted_order": serialize_order(submitted_order),
+        "submitted_order":  AlpacaBroker.serialize_order(submitted_order),
     }
 
     log_path = save_paper_trade_log(
