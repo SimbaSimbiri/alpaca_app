@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 
 from market_terminal.backtest.engine import BacktestResult
-from market_terminal.constants import INITIAL_CAPITAL, RISK_FREE_RATE, TRADING_DAYS_PER_YEAR
+from market_terminal.core.constants import INITIAL_CAPITAL, RISK_FREE_RATE, TRADING_DAYS_PER_YEAR
 
 
 def drawdown_series(equity: pd.Series) -> pd.Series:

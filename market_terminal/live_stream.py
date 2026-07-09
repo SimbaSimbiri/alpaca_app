@@ -7,8 +7,8 @@ from typing import Any
 from alpaca.data.enums import DataFeed
 from alpaca.data.live import StockDataStream
 
-from market_terminal.config import load_settings
-from market_terminal.constants import DATA_FEED_IEX, DATA_FEED_SIP
+from market_terminal.core.settings import load_settings
+from market_terminal.core.constants import DATA_FEED_IEX, DATA_FEED_SIP
 
 FEED_MAP = {
     DATA_FEED_IEX: DataFeed.IEX,

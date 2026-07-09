@@ -2,28 +2,12 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
-from datetime import datetime, time, timezone, timedelta
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 import joblib
 import pandas as pd
 
-try:
-    from dotenv import load_dotenv
-except ImportError:
-    load_dotenv = None
-
-from market_terminal.features.feature_engineering import get_clean_ml_dataset, FEATURE_COLUMNS
-from market_terminal.features.pca import fit_pca, transform_pca, print_pca_summary
-from market_terminal.strategy.ml_model import (
-    time_train_test_split,
-    train_random_forest,
-    predict_up_probability,
-    probability_to_signal,
-    print_model_summary,
-)
-from market_terminal.reporting.visualizations import save_hw3_charts
 from market_terminal.backtest.engine import (
     BacktestConfig,
     backtest_ml_long_only_signal,
@@ -36,169 +20,19 @@ from market_terminal.backtest.metrics import (
     print_hw3_performance_summary,
     format_hw3_metrics_for_console,
 )
+from market_terminal.core.time_utils import years_ago, parse_date_arg
+from market_terminal.data.alpaca_historical import download_daily_ohlcv_from_alpaca
+from market_terminal.features.feature_engineering import get_clean_ml_dataset, FEATURE_COLUMNS
+from market_terminal.features.pca import fit_pca, transform_pca, print_pca_summary
+from market_terminal.reporting.visualizations import save_hw3_charts
+from market_terminal.strategy.ml_model import (
+    time_train_test_split,
+    train_random_forest,
+    predict_up_probability,
+    probability_to_signal,
+    print_model_summary,
+)
 
-
-def get_env_value(*names: str) -> str | None:
-    for name in names:
-        value = os.getenv(name)
-        if value:
-            return value
-    return None
-
-
-def get_alpaca_credentials() -> tuple[str, str]:
-    if load_dotenv is not None:
-        load_dotenv()
-
-    api_key = get_env_value(
-        "ALPACA_API_KEY",
-        "ALPACA_API_KEY_ID",
-        "APCA_API_KEY_ID",
-    )
-
-    api_secret = get_env_value(
-        "ALPACA_API_SECRET",
-        "ALPACA_SECRET_KEY",
-        "ALPACA_API_SECRET_KEY",
-        "APCA_API_SECRET_KEY",
-    )
-
-    if not api_key or not api_secret:
-        raise RuntimeError(
-            "Missing Alpaca credentials. Add them to .env using one of these formats:\n"
-            "ALPACA_API_KEY=your_key\n"
-            "ALPACA_API_SECRET=your_secret\n\n"
-            "or:\n"
-            "APCA_API_KEY_ID=your_key\n"
-            "APCA_API_SECRET_KEY=your_secret"
-        )
-
-    return api_key, api_secret
-
-
-def years_ago(dt: datetime, years: int) -> datetime:
-    try:
-        return dt.replace(year=dt.year - years)
-    except ValueError:
-        return dt.replace(year=dt.year - years, month=2, day=28)
-
-
-def parse_date_arg(date_string: str | None, default: datetime, end_of_day: bool = False) -> datetime:
-    if date_string is None:
-        return default
-
-    parsed_date = datetime.fromisoformat(date_string)
-
-    if parsed_date.tzinfo is None:
-        if "T" not in date_string and end_of_day:
-            parsed_date = datetime.combine(
-                parsed_date.date(),
-                time(hour=23, minute=59, second=59),
-                tzinfo=timezone.utc,
-            )
-        else:
-            parsed_date = parsed_date.replace(tzinfo=timezone.utc)
-
-    return parsed_date
-
-
-def download_daily_ohlcv_from_alpaca(
-    symbol: str,
-    start: datetime,
-    end: datetime,
-    feed: str = "iex",
-) -> pd.DataFrame:
-    """
-    Downloads fresh daily OHLCV data from Alpaca.
-
-    feed options:
-    - "iex": free real-time IEX feed
-    - "sip": full-market SIP feed, but recent data may require a paid subscription
-
-    Output columns:
-    - open
-    - high
-    - low
-    - close
-    - volume
-    """
-
-    try:
-        from alpaca.data.enums import DataFeed
-        from alpaca.data.historical import StockHistoricalDataClient
-        from alpaca.data.requests import StockBarsRequest
-        from alpaca.data.timeframe import TimeFrame
-    except ImportError as exc:
-        raise ImportError(
-            "alpaca-py is not installed. Install it with:\n"
-            "pip install alpaca-py"
-        ) from exc
-
-    api_key, api_secret = get_alpaca_credentials()
-
-    client = StockHistoricalDataClient(
-        api_key=api_key,
-        secret_key=api_secret,
-    )
-
-    feed = feed.lower().strip()
-
-    if feed == "iex":
-        data_feed = DataFeed.IEX
-    elif feed == "sip":
-        data_feed = DataFeed.SIP
-    else:
-        raise ValueError("feed must be either 'iex' or 'sip'.")
-
-    request = StockBarsRequest(
-        symbol_or_symbols=symbol,
-        timeframe=TimeFrame.Day,
-        start=start,
-        end=end,
-        feed=data_feed,
-    )
-
-    try:
-        bars = client.get_stock_bars(request).df
-    except Exception as exc:
-        raise RuntimeError(
-            f"Failed to download Alpaca data for {symbol} using feed='{feed}'.\n\n"
-            "Most common fix:\n"
-            "1. Use the free IEX feed:\n"
-            f"   python run_hw3_ml_backtest.py --symbol {symbol} --feed iex\n\n"
-            "2. Or use SIP with an end time at least 15–20 minutes behind current time:\n"
-            f"   python run_hw3_ml_backtest.py --symbol {symbol} --feed sip --data-delay-minutes 20\n\n"
-            "Original Alpaca error:\n"
-            f"{exc}"
-        ) from exc
-
-    if bars.empty:
-        raise ValueError(
-            f"No daily bars returned for {symbol}. "
-            "Check the symbol, date range, and Alpaca data access."
-        )
-
-    if isinstance(bars.index, pd.MultiIndex):
-        index_names = list(bars.index.names)
-
-        if "symbol" in index_names:
-            bars = bars.xs(symbol, level="symbol")
-        else:
-            bars = bars.loc[symbol]
-
-    bars = bars.sort_index()
-    bars.index.name = "timestamp"
-
-    required_columns = ["open", "high", "low", "close", "volume"]
-    missing = [col for col in required_columns if col not in bars.columns]
-
-    if missing:
-        raise ValueError(f"Downloaded Alpaca data is missing columns: {missing}")
-
-    ohlcv = bars[required_columns].copy()
-    ohlcv = ohlcv.dropna()
-
-    return ohlcv
 
 def save_pca_summary(fitted_pca, output_path: Path) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)

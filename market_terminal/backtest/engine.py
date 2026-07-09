@@ -5,7 +5,7 @@ from math import floor
 
 import pandas as pd
 
-from market_terminal.constants import INITIAL_CAPITAL
+from market_terminal.core.constants import INITIAL_CAPITAL
 
 
 @dataclass(frozen=True)

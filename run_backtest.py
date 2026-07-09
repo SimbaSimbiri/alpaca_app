@@ -12,7 +12,7 @@ from market_terminal.backtest.engine import (
     backtest_buy_and_hold,
     backtest_long_only_strategy,
 )
-from market_terminal.constants import BACKTEST_YEARS, INITIAL_CAPITAL, RISK_FREE_RATE
+from market_terminal.core.constants import BACKTEST_YEARS, INITIAL_CAPITAL, RISK_FREE_RATE
 from market_terminal.features.indicators import add_all_indicators
 from market_terminal.backtest.metrics import build_metrics_table, format_metrics_for_console
 from market_terminal.reporting.report import create_pdf_report

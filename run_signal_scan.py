@@ -8,6 +8,8 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import accuracy_score
 
+from market_terminal.core.time_utils import years_ago
+from market_terminal.data.alpaca_historical import download_daily_ohlcv_from_alpaca
 from market_terminal.features.feature_engineering import (
     FEATURE_COLUMNS,
     add_ml_features,
@@ -18,10 +20,6 @@ from market_terminal.strategy.ml_model import (
     time_train_test_split,
     train_random_forest,
     predict_up_probability,
-)
-from run_ml_backtest import (
-    download_daily_ohlcv_from_alpaca,
-    years_ago,
 )
 
 DEFAULT_SYMBOLS = [
@@ -96,7 +94,7 @@ def scan_symbol(
     test_predictions = model.predict(X_test_pca)
     test_accuracy = accuracy_score(y_test, test_predictions)
 
-    # Build latest inference row.
+    # Build the latest inference row.
     # Use add_ml_features instead of get_clean_ml_dataset because the latest row
     # does not need a known target.
     feature_data = add_ml_features(df)

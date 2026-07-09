@@ -11,7 +11,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from matplotlib.patches import Rectangle
 
-from market_terminal.constants import (
+from market_terminal.core.constants import (
     BEAR_COLOR,
     BULL_COLOR,
     CANDLE_ALPHA,

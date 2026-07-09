@@ -10,14 +10,12 @@ import joblib
 import numpy as np
 import pandas as pd
 
+from market_terminal.core.settings import get_alpaca_credentials
+from market_terminal.core.time_utils import years_ago
+from market_terminal.data.alpaca_historical import download_daily_ohlcv_from_alpaca
 from market_terminal.features.feature_engineering import add_ml_features
 from market_terminal.features.pca import transform_pca
 from market_terminal.strategy.ml_model import predict_up_probability, probability_to_signal
-from run_ml_backtest import (
-    download_daily_ohlcv_from_alpaca,
-    get_alpaca_credentials,
-    years_ago,
-)
 
 
 def load_model_bundle(model_bundle_path: Path) -> dict[str, Any]:
