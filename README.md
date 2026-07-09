@@ -91,7 +91,7 @@ This project has four main parts:
 ```text
 alpaca_app/
 │
-├── app.py                         # Tkinter market terminal
+├── app.py                          # Thin launcher for the Tkinter market terminal
 ├── run_backtest.py                # Original technical-indicator strategy backtest runner
 ├── run_ml_backtest.py         # Machine-learning + PCA backtest runner
 ├── run_signal_scan.py         # Multi-symbol latest-signal scanner
