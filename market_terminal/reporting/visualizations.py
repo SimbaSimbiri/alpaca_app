@@ -5,8 +5,8 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from market_terminal.backtester import BacktestResult
-from market_terminal.performance import drawdown_series
+from market_terminal.backtest.engine import BacktestResult
+from market_terminal.backtest.metrics import drawdown_series
 
 
 def _trade_points(trades: pd.DataFrame, action: str) -> pd.DataFrame:

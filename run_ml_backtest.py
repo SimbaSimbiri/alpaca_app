@@ -24,14 +24,14 @@ from market_terminal.strategy.ml_model import (
     print_model_summary,
 )
 from market_terminal.reporting.visualizations import save_hw3_charts
-from market_terminal.backtester import (
+from market_terminal.backtest.engine import (
     BacktestConfig,
     backtest_ml_long_only_signal,
     backtest_buy_and_hold,
     extract_round_trips_from_result,
     build_backtest_comparison_frame,
 )
-from market_terminal.performance import (
+from market_terminal.backtest.metrics import (
     build_hw3_performance_table,
     print_hw3_performance_summary,
     format_hw3_metrics_for_console,
