@@ -13,8 +13,8 @@ from alpaca.data.timeframe import TimeFrame
 from alpaca.trading.client import TradingClient
 from pandas import DataFrame, Series
 
-from market_terminal.core.settings import load_settings
 from market_terminal.core.constants import HISTORICAL_DAYS, DATA_FEED_IEX, DATA_FEED_SIP, BACKTEST_YEARS
+from market_terminal.core.settings import load_settings
 
 FEED_MAP = {
     DATA_FEED_IEX: DataFeed.IEX,  # Investor’s exchange data feed

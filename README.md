@@ -133,7 +133,6 @@ alpaca_app/
 ├── run_paper_trade.py             # CLI entrypoint for Alpaca paper-trading decisions
 ├── README.md
 ├── requirements.txt
-├── .env.example
 ├── .gitignore
 │
 ├── market_terminal/
@@ -147,7 +146,9 @@ alpaca_app/
 │   │
 │   ├── data/
 │   │   ├── __init__.py
-│   │   └── alpaca_historical.py   # Shared Alpaca historical OHLCV downloader
+│   │   ├── alpaca_historical.py   # Shared Alpaca historical OHLCV downloader
+│   │   ├── alpaca_connector.py    # Alpaca historical data connector used by UI/backtests
+│   │   └── alpaca_live.py         # Alpaca websocket quote/trade stream for the UI
 │   │
 │   ├── features/
 │   │   ├── __init__.py
@@ -180,9 +181,7 @@ alpaca_app/
 │   ├── ui/
 │   │   ├── __init__.py
 │   │   └── dashboard.py           # Tkinter market terminal UI
-│   │
-│   ├── data_connector.py          # Legacy Alpaca data connector used by the UI
-│   └── live_stream.py             # Legacy Alpaca websocket stream used by the UI
+│
 │
 ├── screenshots/                   # Terminal UI screenshots
 ├── charts/                        # Committed chart examples

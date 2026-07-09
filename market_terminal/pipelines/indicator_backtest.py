@@ -52,7 +52,7 @@ def load_market_data(ticker: str, years: int, use_sample_data: bool) -> pd.DataF
         print("Using generated sample data. Use real Alpaca data for final submission.")
         return make_sample_ohlcv(years=years)
 
-    from market_terminal.data_connector import AlpacaDataConnector
+    from market_terminal.data.alpaca_connector import AlpacaDataConnector
 
     connector = AlpacaDataConnector()
     return connector.get_daily_ohlcv(symbol=ticker, years=years)

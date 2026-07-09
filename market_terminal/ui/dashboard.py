@@ -23,8 +23,8 @@ from market_terminal.core.constants import (
     VOLUME_GAP_RATIO,
     WICK_LINE_WIDTH, CHART_WINDOW_BARS,
 )
-from market_terminal.data_connector import AlpacaDataConnector
-from market_terminal.live_stream import LiveMarketStream
+from market_terminal.data.alpaca_connector import AlpacaDataConnector
+from market_terminal.data.alpaca_live import LiveMarketStream
 
 
 class MarketTerminalApp:
