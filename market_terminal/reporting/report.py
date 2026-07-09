@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib.backends.backend_pdf import PdfPages
 
-from market_terminal.strategies import StrategySpec
+from market_terminal.strategy.technical_strategies import StrategySpec
 
 
 def _fmt_pct(value: float) -> str:

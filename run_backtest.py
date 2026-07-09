@@ -13,11 +13,11 @@ from market_terminal.backtester import (
     backtest_long_only_strategy,
 )
 from market_terminal.constants import BACKTEST_YEARS, INITIAL_CAPITAL, RISK_FREE_RATE
-from market_terminal.indicators import add_all_indicators
+from market_terminal.features.indicators import add_all_indicators
 from market_terminal.performance import build_metrics_table, format_metrics_for_console
-from market_terminal.report import create_pdf_report
-from market_terminal.strategies import add_all_strategy_signals
-from market_terminal.visualizations import save_all_charts
+from market_terminal.reporting.report import create_pdf_report
+from market_terminal.reporting.visualizations import save_all_charts
+from market_terminal.strategy.technical_strategies import add_all_strategy_signals
 
 
 def make_sample_ohlcv(years: int = BACKTEST_YEARS, seed: int = 7) -> pd.DataFrame:

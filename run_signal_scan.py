@@ -8,17 +8,17 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import accuracy_score
 
-from market_terminal.features import (
+from market_terminal.features.feature_engineering import (
     FEATURE_COLUMNS,
     add_ml_features,
     get_clean_ml_dataset,
 )
-from market_terminal.ml_model import (
+from market_terminal.features.pca import fit_pca, transform_pca
+from market_terminal.strategy.ml_model import (
     time_train_test_split,
     train_random_forest,
     predict_up_probability,
 )
-from market_terminal.pca_transformer import fit_pca, transform_pca
 from run_ml_backtest import (
     download_daily_ohlcv_from_alpaca,
     years_ago,

@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from market_terminal.indicators import add_all_indicators, prepare_ohlcv
+from market_terminal.features.indicators import add_all_indicators, prepare_ohlcv
 
 
 FEATURE_COLUMNS = [

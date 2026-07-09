@@ -14,15 +14,16 @@ try:
 except ImportError:
     load_dotenv = None
 
-from market_terminal.features import get_clean_ml_dataset, FEATURE_COLUMNS
-from market_terminal.pca_transformer import fit_pca, transform_pca, print_pca_summary
-from market_terminal.ml_model import (
+from market_terminal.features.feature_engineering import get_clean_ml_dataset, FEATURE_COLUMNS
+from market_terminal.features.pca import fit_pca, transform_pca, print_pca_summary
+from market_terminal.strategy.ml_model import (
     time_train_test_split,
     train_random_forest,
     predict_up_probability,
     probability_to_signal,
     print_model_summary,
 )
+from market_terminal.reporting.visualizations import save_hw3_charts
 from market_terminal.backtester import (
     BacktestConfig,
     backtest_ml_long_only_signal,
@@ -35,7 +36,6 @@ from market_terminal.performance import (
     print_hw3_performance_summary,
     format_hw3_metrics_for_console,
 )
-from market_terminal.visualizations import save_hw3_charts
 
 
 def get_env_value(*names: str) -> str | None:
