@@ -3,12 +3,14 @@ from __future__ import annotations
 import queue
 import threading
 from typing import Any
+from pathlib import Path
 
 from alpaca.data.enums import DataFeed
 from alpaca.data.live import StockDataStream
 
 from market_terminal.core.settings import load_settings
 from market_terminal.core.constants import DATA_FEED_IEX, DATA_FEED_SIP
+from market_terminal.data.quote_logger import MarketDataLogger
 
 FEED_MAP = {
     DATA_FEED_IEX: DataFeed.IEX,
@@ -22,7 +24,13 @@ class LiveMarketStream:
     Sends quote/trade updates back through a queue.
     """
 
-    def __init__(self, symbol: str, output_queue: queue.Queue) -> None:
+    def __init__(
+            self,
+            symbol: str,
+            output_queue: queue.Queue,
+            log_live_data: bool = True,
+            log_dir: str | Path = "outputs/live_data",
+    ) -> None:
         settings = load_settings()
 
         self.symbol = symbol.upper().strip()
@@ -34,31 +42,55 @@ class LiveMarketStream:
             secret_key=settings.secret_key,
             feed=self.feed,
         )
+        self.log_live_data = log_live_data
+        self.event_logger = MarketDataLogger(log_dir) if log_live_data else None
 
         self.thread: threading.Thread | None = None
 
     async def _quote_handler(self, quote: Any) -> None:
-        print("QUOTE RECEIVED:", quote)
+        log_path = None
+
+        if self.event_logger is not None:
+            log_path = self.event_logger.log_quote(
+                symbol=quote.symbol,
+                bid=quote.bid_price,
+                ask=quote.ask_price,
+                event_timestamp=quote.timestamp,
+                feed=str(self.feed),
+            )
 
         self.output_queue.put(
             {
                 "type": "quote",
                 "symbol": quote.symbol,
-                "bid": quote.bid_price, # most expensive buyers from orderbook
-                "ask": quote.ask_price, # cheapest sellers from orderbook
+                "bid": quote.bid_price,
+                "ask": quote.ask_price,
                 "timestamp": quote.timestamp,
+                "log_path": str(log_path) if log_path else None,
             }
         )
 
     async def _trade_handler(self, trade: Any) -> None:
-        print("TRADE RECEIVED:", trade)
+        trade_size = getattr(trade, "size", None)
+        log_path = None
+
+        if self.event_logger is not None:
+            log_path = self.event_logger.log_trade(
+                symbol=trade.symbol,
+                last=trade.price,
+                size=trade_size,
+                event_timestamp=trade.timestamp,
+                feed=str(self.feed),
+            )
 
         self.output_queue.put(
             {
                 "type": "trade",
                 "symbol": trade.symbol,
                 "last": trade.price,
+                "size": trade_size,
                 "timestamp": trade.timestamp,
+                "log_path": str(log_path) if log_path else None,
             }
         )
 

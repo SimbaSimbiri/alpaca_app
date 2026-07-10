@@ -310,6 +310,8 @@ class MarketTerminalApp:
             self.live_stream = LiveMarketStream(
                 symbol=symbol,
                 output_queue=self.ui_queue,
+                log_live_data=True,
+                log_dir="outputs/live_data",
             )
             if self.live_stream:
                 self.live_stream.start()
@@ -384,7 +386,12 @@ class MarketTerminalApp:
         self.quote_time_var.set(str(timestamp))
 
         symbol = message.get("symbol", self.symbol_var.get().upper().strip())
-        self.status_var.set(f"Received live quote for {symbol}")
+        log_path = message.get("log_path")
+
+        if log_path:
+            self.status_var.set(f"Received live quote for {symbol}; logged to {log_path}")
+        else:
+            self.status_var.set(f"Received live quote for {symbol}")
 
     def _handle_trade_message(self, message: dict) -> None:
         last = message.get("last")
@@ -394,7 +401,12 @@ class MarketTerminalApp:
         self.trade_time_var.set(str(timestamp))
 
         symbol = message.get("symbol", self.symbol_var.get().upper().strip())
-        self.status_var.set(f"Received live trade for {symbol}")
+        log_path = message.get("log_path")
+
+        if log_path:
+            self.status_var.set(f"Received live trade for {symbol}; logged to {log_path}")
+        else:
+            self.status_var.set(f"Received live trade for {symbol}")
 
     def _create_scrollable_page(self) -> None:
         self.scroll_canvas = tk.Canvas(

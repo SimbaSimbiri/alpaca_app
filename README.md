@@ -56,6 +56,7 @@ The refactored package structure separates concerns so that data access, feature
 - Streams last trade prices
 - Updates the UI through an event queue
 - Uses a thin root launcher with the actual UI implementation inside `market_terminal/ui/`
+- Logs incoming live quote and trade events to structured CSV files under `outputs/live_data/`
 
 ### Technical Indicator Backtesting
 
@@ -158,7 +159,8 @@ alpaca_app/
 │   │   ├── __init__.py
 │   │   ├── alpaca_historical.py   # Shared Alpaca historical OHLCV downloader
 │   │   ├── alpaca_connector.py    # Alpaca historical data connector used by UI/backtests
-│   │   └── alpaca_live.py         # Alpaca websocket quote/trade stream for the UI
+│   │   ├── alpaca_live.py         # Alpaca websocket quote/trade stream for the UI
+│   │   └── quote_logger.py        # CSV logger for incoming live quote/trade events
 │   │
 │   ├── features/
 │   │   ├── __init__.py
