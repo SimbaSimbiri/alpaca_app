@@ -146,6 +146,7 @@ alpaca_app/
 │   │   ├── __init__.py
 │   │   ├── constants.py           # Shared constants and defaults
 │   │   ├── settings.py            # Environment variable and Alpaca credential loading
+│   │   ├── types.py               # Shared trading signal and paper-trade decision types
 │   │   └── time_utils.py          # Shared date/time helpers
 │   ├── execution/
 │   │   ├── __init__.py

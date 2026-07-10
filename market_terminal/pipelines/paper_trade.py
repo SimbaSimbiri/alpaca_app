@@ -17,7 +17,7 @@ from market_terminal.features.feature_engineering import add_ml_features
 from market_terminal.features.pca import transform_pca
 from market_terminal.risk.risk_manager import RiskConfig, RiskManager
 from market_terminal.strategy.ml_model import predict_up_close_probability, probability_to_signal
-
+from market_terminal.core.types import ModelSignal, PaperTradeDecision
 
 def load_model_bundle(model_bundle_path: Path) -> dict[str, Any]:
     if not model_bundle_path.exists():
@@ -102,6 +102,56 @@ def build_latest_signal(
 
     return df, latest_row, probability, signal
 
+def build_paper_trade_decision(
+    model_signal: ModelSignal,
+    current_position_qty: float,
+    requested_qty: float,
+) -> PaperTradeDecision:
+    """
+    Converts a model signal and current paper position into a concrete
+    BUY, SELL, or HOLD decision.
+    """
+
+    currently_long = current_position_qty > 0
+
+    if model_signal.signal == 1 and not currently_long:
+        return PaperTradeDecision(
+            symbol=model_signal.symbol,
+            desired_state=model_signal.desired_state,
+            current_position_qty=current_position_qty,
+            action="BUY",
+            order_qty=float(requested_qty),
+            reason="Model wants LONG and there is currently no paper position.",
+        )
+
+    if model_signal.signal == 1 and currently_long:
+        return PaperTradeDecision(
+            symbol=model_signal.symbol,
+            desired_state=model_signal.desired_state,
+            current_position_qty=current_position_qty,
+            action="HOLD",
+            order_qty=0.0,
+            reason="Model wants LONG and the paper account is already long.",
+        )
+
+    if model_signal.signal == 0 and currently_long:
+        return PaperTradeDecision(
+            symbol=model_signal.symbol,
+            desired_state=model_signal.desired_state,
+            current_position_qty=current_position_qty,
+            action="SELL",
+            order_qty=abs(float(current_position_qty)),
+            reason="Model wants FLAT and the paper account currently has a long position.",
+        )
+
+    return PaperTradeDecision(
+        symbol=model_signal.symbol,
+        desired_state=model_signal.desired_state,
+        current_position_qty=current_position_qty,
+        action="HOLD",
+        order_qty=0.0,
+        reason="Model wants FLAT and there is currently no paper position.",
+    )
 
 def save_paper_trade_log(
         log: dict[str, Any],
@@ -173,7 +223,14 @@ def run_paper_trade_pipeline(args: argparse.Namespace) -> None:
     latest_timestamp = latest_row.index[-1]
     latest_close = float(latest_row["close"].iloc[-1])
 
-    desired_state = "LONG" if signal == 1 else "FLAT"
+    model_signal = ModelSignal(
+        symbol=symbol,
+        timestamp=latest_timestamp,
+        latest_close=latest_close,
+        probability=probability,
+        threshold=threshold,
+        signal=signal,
+    )
 
     print("\nLatest Market/Model State")
     print("-" * 40)
@@ -181,7 +238,7 @@ def run_paper_trade_pipeline(args: argparse.Namespace) -> None:
     print(f"Latest close: ${latest_close:,.2f}")
     print(f"Predicted probability of positive next-day return: {probability:.4f}")
     print(f"ML signal: {signal}")
-    print(f"Desired state: {desired_state}")
+    print(f"Desired state: {model_signal.desired_state}")
 
     # ------------------------------------------------------------
     # 2. Check paper account and current position
@@ -191,8 +248,6 @@ def run_paper_trade_pipeline(args: argparse.Namespace) -> None:
     account = broker.get_account()
 
     current_qty = broker.get_current_position_qty(symbol)
-
-    currently_long = current_qty > 0
 
     buying_power = float(account.buying_power)
 
@@ -214,40 +269,24 @@ def run_paper_trade_pipeline(args: argparse.Namespace) -> None:
     # 3. Decide action
     # ------------------------------------------------------------
 
-    action = "HOLD"
-    order_qty = 0.0
-    reason = ""
-
-    if signal == 1 and not currently_long:
-        action = "BUY"
-        order_qty = float(args.qty)
-        reason = "Model wants LONG and there is currently no paper position."
-
-    elif signal == 1 and currently_long:
-        action = "HOLD"
-        reason = "Model wants LONG and the paper account is already long."
-
-    elif signal == 0 and currently_long:
-        action = "SELL"
-        order_qty = abs(float(current_qty))
-        reason = "Model wants FLAT and the paper account currently has a long position."
-
-    elif signal == 0 and not currently_long:
-        action = "HOLD"
-        reason = "Model wants FLAT and there is currently no paper position."
+    decision = build_paper_trade_decision(
+        model_signal=model_signal,
+        current_position_qty=current_qty,
+        requested_qty=float(args.qty),
+    )
 
     print("\nTrading Decision")
     print("-" * 40)
-    print(f"Action: {action}")
-    print(f"Quantity: {order_qty}")
-    print(f"Reason: {reason}")
+    print(f"Action: {decision.action}")
+    print(f"Quantity: {decision.order_qty}")
+    print(f"Reason: {decision.reason}")
 
     risk_decision = risk_manager.approve_paper_trade(
-        action=action,
-        symbol=symbol,
-        order_qty=order_qty,
-        current_position_qty=current_qty,
-        latest_price=latest_close,
+        action=decision.action,
+        symbol=decision.symbol,
+        order_qty=decision.order_qty,
+        current_position_qty=decision.current_position_qty,
+        latest_price=model_signal.latest_close,
         buying_power=buying_power,
     )
 
@@ -262,11 +301,11 @@ def run_paper_trade_pipeline(args: argparse.Namespace) -> None:
 
     submitted_order = None
 
-    if action in {"BUY", "SELL"} and args.execute and risk_decision.approved:
+    if decision.action in {"BUY", "SELL"} and args.execute and risk_decision.approved:
         submitted_order = broker.submit_market_order(
-            symbol=symbol,
-            side=action,
-            qty=order_qty,
+            symbol=decision.symbol,
+            side=decision.action,
+            qty=decision.order_qty,
         )
 
         print("\nSubmitted PAPER order")
@@ -277,13 +316,13 @@ def run_paper_trade_pipeline(args: argparse.Namespace) -> None:
         print(f"Quantity: {submitted_order.qty}")
         print(f"Status: {submitted_order.status}")
 
-    elif action in {"BUY", "SELL"} and not risk_decision.approved:
+    elif decision.action in {"BUY", "SELL"} and not risk_decision.approved:
         print("\nRisk Rejection")
         print("-" * 40)
         print("No paper order was submitted because the risk manager rejected the decision.")
         print(risk_decision.reason)
 
-    elif action in {"BUY", "SELL"} and not args.execute:
+    elif decision.action in {"BUY", "SELL"} and not args.execute:
         print("\nDry Run")
         print("-" * 40)
         print("No paper order was submitted.")
@@ -305,18 +344,18 @@ def run_paper_trade_pipeline(args: argparse.Namespace) -> None:
         "model_bundle": str(model_bundle_path),
         "feed": args.feed,
         "data_delay_minutes": args.data_delay_minutes,
-        "latest_feature_timestamp": str(latest_timestamp),
-        "latest_close": latest_close,
-        "probability": probability,
-        "threshold": threshold,
-        "signal": signal,
-        "desired_state": desired_state,
+        "latest_feature_timestamp": str(model_signal.timestamp),
+        "latest_close": model_signal.latest_close,
+        "probability": model_signal.probability,
+        "threshold": model_signal.threshold,
+        "signal": model_signal.signal,
+        "desired_state": model_signal.desired_state,
         "account_status": str(account.status),
         "buying_power": str(account.buying_power),
-        "current_position_qty": current_qty,
-        "action": action,
-        "order_qty": order_qty,
-        "reason": reason,
+        "current_position_qty": decision.current_position_qty,
+        "action": decision.action,
+        "order_qty": decision.order_qty,
+        "reason": decision.reason,
         "execute": args.execute,
         "risk_approved": risk_decision.approved,
         "risk_reason": risk_decision.reason,
