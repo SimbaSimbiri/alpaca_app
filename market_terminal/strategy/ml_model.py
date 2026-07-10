@@ -59,7 +59,7 @@ def train_random_forest(
     return model
 
 
-def predict_up_probability(
+def predict_up_close_probability(
     model: RandomForestClassifier,
     X: pd.DataFrame,
 ) -> pd.Series:
@@ -124,6 +124,7 @@ def print_model_summary(
     accuracy = accuracy_score(y_test, predictions)
     matrix = confusion_matrix(y_test, predictions, labels=[0, 1])
 
+    # The row, col position in matrix give us actual and predicted respectively
     true_negative = matrix[0, 0]
     false_positive = matrix[0, 1]
     false_negative = matrix[1, 0]

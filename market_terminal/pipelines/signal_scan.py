@@ -17,7 +17,7 @@ from market_terminal.features.feature_engineering import (
 )
 from market_terminal.features.pca import fit_pca, transform_pca
 from market_terminal.strategy.ml_model import (
-    predict_up_probability,
+    predict_up_close_probability,
     time_train_test_split,
     train_random_forest,
 )
@@ -110,10 +110,7 @@ def scan_symbol(
     )
 
     latest_probability = float(
-        predict_up_probability(
-            model=model,
-            X=X_latest_pca,
-        ).iloc[-1]
+        predict_up_close_probability(model=model, X=X_latest_pca).iloc[-1]
     )
 
     latest_signal = int(latest_probability > threshold)

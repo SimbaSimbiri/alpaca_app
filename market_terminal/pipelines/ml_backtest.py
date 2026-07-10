@@ -26,7 +26,7 @@ from market_terminal.features.feature_engineering import FEATURE_COLUMNS, get_cl
 from market_terminal.features.pca import fit_pca, print_pca_summary, transform_pca
 from market_terminal.reporting.visualizations import save_ml_strategy_charts
 from market_terminal.strategy.ml_model import (
-    predict_up_probability,
+    predict_up_close_probability,
     print_model_summary,
     probability_to_signal,
     time_train_test_split,
@@ -210,10 +210,7 @@ def run_ml_backtest_pipeline(args: argparse.Namespace) -> None:
 
     # Generate probabilities and signals
 
-    probabilities = predict_up_probability(
-        model=model,
-        X=X_test_pca,
-    )
+    probabilities = predict_up_close_probability(model=model, X=X_test_pca)
 
     signals = probability_to_signal(
         probabilities=probabilities,

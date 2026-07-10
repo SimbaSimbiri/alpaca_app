@@ -16,7 +16,7 @@ from market_terminal.execution.alpaca_broker import AlpacaBroker
 from market_terminal.features.feature_engineering import add_ml_features
 from market_terminal.features.pca import transform_pca
 from market_terminal.risk.risk_manager import RiskConfig, RiskManager
-from market_terminal.strategy.ml_model import predict_up_probability, probability_to_signal
+from market_terminal.strategy.ml_model import predict_up_close_probability, probability_to_signal
 
 
 def load_model_bundle(model_bundle_path: Path) -> dict[str, Any]:
@@ -86,10 +86,7 @@ def build_latest_signal(
     X_latest_pca = transform_pca(X_latest, fitted_pca)
 
     probability = float(
-        predict_up_probability(
-            model=model,
-            X=X_latest_pca,
-        ).iloc[-1]
+        predict_up_close_probability(model=model, X=X_latest_pca).iloc[-1]
     )
 
     signal = int(

@@ -21,7 +21,7 @@ from market_terminal.strategy.technical_strategies import add_all_strategy_signa
 
 def make_sample_ohlcv(years: int = BACKTEST_YEARS, seed: int = 7) -> pd.DataFrame:
     """
-    Development-only sample data. Use Alpaca data for the actual assignment.
+    Development-only sample data. Use Alpaca data for the actual financial data.
     """
     rng = np.random.default_rng(seed)
     periods = int(252 * years)
