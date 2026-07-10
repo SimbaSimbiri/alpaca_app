@@ -27,6 +27,7 @@ Thumbs.db
 /outputs
 outputs/live_data/
 outputs/paper_trading/
+outputs/ui_engine_control/
 
 # Paper trading logs with account/order-specific information
 paper_trading/

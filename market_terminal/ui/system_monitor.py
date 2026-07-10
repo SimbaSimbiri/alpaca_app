@@ -7,6 +7,7 @@ from market_terminal.ui.monitor_state import (
     load_monitor_state,
     monitor_state_to_lines,
 )
+from market_terminal.ui.engine_process import EngineProcessController
 
 
 class SystemMonitorApp:
@@ -18,14 +19,22 @@ class SystemMonitorApp:
 
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
-        self.root.title("Alpaca Trading System Monitor")
+        self.root.title("Trading System Monitor")
         self.root.geometry("900x650")
 
         self.auto_refresh_var = tk.BooleanVar(value=False)
         self.refresh_seconds_var = tk.IntVar(value=10)
         self.status_var = tk.StringVar(value="Ready")
 
+        self.engine_controller = EngineProcessController()
+        self.engine_command_var = tk.StringVar(
+            value="python run_live_paper_engine.py --config config/config.yaml --continuous"
+        )
+        self.engine_status_var = tk.StringVar(value="Engine status: STOPPED")
+        self.engine_log_var = tk.StringVar(value="Engine log: -")
+
         self._build_layout()
+        self.root.protocol("WM_DELETE_WINDOW", self.on_close)
         self.refresh_monitor()
 
     def _build_layout(self) -> None:
@@ -47,6 +56,44 @@ class SystemMonitorApp:
             ),
         )
         subtitle.pack(anchor=tk.W, pady=(4, 12))
+
+        engine_frame = ttk.LabelFrame(container, text="Live Engine Controls", padding=8)
+        engine_frame.pack(fill=tk.X, pady=(0, 10))
+
+        ttk.Label(engine_frame, text="Command:").pack(anchor=tk.W)
+
+        command_entry = ttk.Entry(
+            engine_frame,
+            textvariable=self.engine_command_var,
+        )
+        command_entry.pack(fill=tk.X, pady=(2, 8))
+
+        engine_buttons = ttk.Frame(engine_frame)
+        engine_buttons.pack(fill=tk.X)
+
+        start_button = ttk.Button(
+            engine_buttons,
+            text="Start Engine",
+            command=self.start_engine,
+        )
+        start_button.pack(side=tk.LEFT)
+
+        stop_button = ttk.Button(
+            engine_buttons,
+            text="Stop Engine",
+            command=self.stop_engine,
+        )
+        stop_button.pack(side=tk.LEFT, padx=(8, 0))
+
+        ttk.Label(
+            engine_frame,
+            textvariable=self.engine_status_var,
+        ).pack(anchor=tk.W, pady=(8, 0))
+
+        ttk.Label(
+            engine_frame,
+            textvariable=self.engine_log_var,
+        ).pack(anchor=tk.W)
 
         controls = ttk.Frame(container)
         controls.pack(fill=tk.X, pady=(0, 8))
@@ -91,6 +138,40 @@ class SystemMonitorApp:
         )
         status_bar.pack(fill=tk.X, pady=(8, 0))
 
+    def start_engine(self) -> None:
+        try:
+            log_path = self.engine_controller.start(self.engine_command_var.get())
+            self.engine_status_var.set(
+                f"Engine status: {self.engine_controller.status_text()}"
+            )
+            self.engine_log_var.set(f"Engine log: {log_path}")
+            self.status_var.set("Live paper engine started from UI.")
+            self._schedule_engine_status_refresh()
+        except Exception as exc:
+            self.status_var.set(f"Could not start engine: {exc}")
+
+    def stop_engine(self) -> None:
+        try:
+            self.engine_controller.stop()
+            self.engine_status_var.set(
+                f"Engine status: {self.engine_controller.status_text()}"
+            )
+            self.status_var.set("Live paper engine stopped from UI.")
+        except Exception as exc:
+            self.status_var.set(f"Could not stop engine: {exc}")
+
+    def _schedule_engine_status_refresh(self) -> None:
+        self.engine_status_var.set(
+            f"Engine status: {self.engine_controller.status_text()}"
+        )
+
+        log_path = self.engine_controller.log_path
+        if log_path is not None:
+            self.engine_log_var.set(f"Engine log: {log_path}")
+
+        if self.engine_controller.is_running():
+            self.root.after(2000, self._schedule_engine_status_refresh)
+
     def refresh_monitor(self) -> None:
         state = load_monitor_state()
         lines = monitor_state_to_lines(state)
@@ -101,6 +182,9 @@ class SystemMonitorApp:
         self.monitor_text.configure(state=tk.DISABLED)
 
         self.status_var.set("Monitor refreshed.")
+        self.engine_status_var.set(
+            f"Engine status: {self.engine_controller.status_text()}"
+        )
 
         self._schedule_auto_refresh()
 
@@ -115,6 +199,12 @@ class SystemMonitorApp:
             self.refresh_seconds_var.set(seconds)
 
         self.root.after(seconds * 1000, self.refresh_monitor)
+
+    def on_close(self) -> None:
+        if self.engine_controller.is_running():
+            self.engine_controller.stop()
+
+        self.root.destroy()
 
 
 def main() -> None:
