@@ -35,3 +35,6 @@ paper_trading/
 # Model artifacts
 *.joblib
 *.pkl
+
+# configurations being raised from CLI
+config/config.yaml

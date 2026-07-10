@@ -1,0 +1,33 @@
+# Example project configuration.
+# Copy this to config/config.yaml for local use.
+# Do not put real Alpaca keys in this file.
+
+universe:
+  symbols:
+    - SPY
+    - AAPL
+    - MSFT
+    - QQQ
+    - NVDA
+
+strategy:
+  probability_threshold: 0.60
+  years: 5
+  feed: sip
+  data_delay_minutes: 20
+
+risk:
+  max_order_qty: 10
+  min_buying_power_after_order: 0
+  allow_short_selling: false
+
+engine:
+  model_bundles:
+    - outputs/SPY_<timestamp>/artifacts/ml_spy_model_bundle.joblib
+
+  qty: 1
+  polling_interval_seconds: 300
+  cycles: 1
+  continuous: false
+  execute_orders: false
+  order_snapshot_limit: 50

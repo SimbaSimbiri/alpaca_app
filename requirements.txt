@@ -5,3 +5,4 @@ matplotlib
 python-dotenv
 scikit-learn
 joblib
+PyYAML>=6.0.0

@@ -17,6 +17,111 @@ from market_terminal.pipelines.paper_trade import (
 )
 from market_terminal.risk.risk_manager import RiskConfig, RiskManager
 from market_terminal.execution.account_snapshot_logger import AccountSnapshotLogger
+from market_terminal.core.system_config import load_system_config
+
+
+def _coalesce(*values):
+    for value in values:
+        if value is not None:
+            return value
+
+    return None
+
+
+def resolve_live_engine_args(args: argparse.Namespace) -> argparse.Namespace:
+    """
+    Resolves live-engine settings from CLI arguments and optional YAML config.
+
+    CLI arguments take precedence over config values.
+    """
+
+    config = load_system_config(getattr(args, "config", None))
+
+    resolved = argparse.Namespace(**vars(args))
+
+    resolved.model_bundles = _coalesce(
+        args.model_bundles,
+        config.engine.model_bundles,
+        [],
+    )
+
+    if not resolved.model_bundles:
+        raise ValueError(
+            "No model bundles provided. Pass --model-bundles or set "
+            "engine.model_bundles in the config file."
+        )
+
+    resolved.qty = float(_coalesce(args.qty, config.engine.qty, 1.0))
+
+    resolved.threshold = _coalesce(
+        args.threshold,
+        config.strategy.probability_threshold,
+    )
+
+    resolved.years = int(_coalesce(args.years, config.strategy.years, 5))
+    resolved.feed = str(_coalesce(args.feed, config.strategy.feed, "sip")).lower()
+    resolved.data_delay_minutes = int(
+        _coalesce(
+            args.data_delay_minutes,
+            config.strategy.data_delay_minutes,
+            20,
+        )
+    )
+
+    resolved.max_order_qty = float(
+        _coalesce(
+            args.max_order_qty,
+            config.risk.max_order_qty,
+            10.0,
+        )
+    )
+
+    resolved.min_buying_power_after_order = float(
+        _coalesce(
+            args.min_buying_power_after_order,
+            config.risk.min_buying_power_after_order,
+            0.0,
+        )
+    )
+
+    resolved.allow_short_selling = bool(config.risk.allow_short_selling)
+
+    resolved.polling_interval_seconds = float(
+        _coalesce(
+            args.polling_interval_seconds,
+            config.engine.polling_interval_seconds,
+            300.0,
+        )
+    )
+
+    resolved.cycles = int(_coalesce(args.cycles, config.engine.cycles, 1))
+
+    resolved.continuous = bool(
+        _coalesce(
+            args.continuous,
+            config.engine.continuous,
+            False,
+        )
+    )
+
+    resolved.execute = bool(
+        _coalesce(
+            args.execute,
+            config.engine.execute_orders,
+            False,
+        )
+    )
+
+    resolved.order_snapshot_limit = int(
+        _coalesce(
+            args.order_snapshot_limit,
+            config.engine.order_snapshot_limit,
+            50,
+        )
+    )
+
+    return resolved
+
 
 def run_single_engine_cycle(
     model_bundle_path: Path,
@@ -299,6 +404,7 @@ def run_live_paper_engine_pipeline(args: argparse.Namespace) -> None:
     By default this runs one cycle. Use --cycles N for repeated polling or
     --continuous to run until interrupted with Ctrl+C.
     """
+    args = resolve_live_engine_args(args)
 
     model_bundle_paths = [Path(path) for path in args.model_bundles]
 
@@ -308,7 +414,7 @@ def run_live_paper_engine_pipeline(args: argparse.Namespace) -> None:
         RiskConfig(
             max_order_qty=float(args.max_order_qty),
             min_buying_power_after_order=float(args.min_buying_power_after_order),
-            allow_short_selling=False,
+            allow_short_selling=bool(args.allow_short_selling),
         )
     )
 
