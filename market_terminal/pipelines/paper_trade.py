@@ -17,7 +17,7 @@ from market_terminal.features.feature_engineering import add_ml_features
 from market_terminal.features.pca import transform_pca
 from market_terminal.risk.risk_manager import RiskConfig, RiskManager
 from market_terminal.strategy.ml_model import predict_up_close_probability, probability_to_signal
-from market_terminal.core.types import ModelSignal, PaperTradeDecision
+from market_terminal.core.types import ModelSignal, PaperTradeDecision, TradeLifecycleEvent
 
 def load_model_bundle(model_bundle_path: Path) -> dict[str, Any]:
     if not model_bundle_path.exists():
@@ -102,6 +102,7 @@ def build_latest_signal(
 
     return df, latest_row, probability, signal
 
+
 def build_paper_trade_decision(
     model_signal: ModelSignal,
     current_position_qty: float,
@@ -151,6 +152,19 @@ def build_paper_trade_decision(
         action="HOLD",
         order_qty=0.0,
         reason="Model wants FLAT and there is currently no paper position.",
+    )
+
+
+def make_lifecycle_event(
+    stage: str,
+    message: str,
+    details: dict | None = None,
+) -> TradeLifecycleEvent:
+    return TradeLifecycleEvent(
+        stage=stage,
+        timestamp=datetime.now(timezone.utc),
+        message=message,
+        details=details or {},
     )
 
 def save_paper_trade_log(
@@ -205,6 +219,8 @@ def run_paper_trade_pipeline(args: argparse.Namespace) -> None:
     print(f"Probability threshold: {threshold:.2f}")
     print(f"Execute orders: {args.execute}")
 
+    lifecycle_events: list[TradeLifecycleEvent] = []
+
     # ------------------------------------------------------------
     # 1. Build latest ML signal
     # ------------------------------------------------------------
@@ -230,6 +246,22 @@ def run_paper_trade_pipeline(args: argparse.Namespace) -> None:
         probability=probability,
         threshold=threshold,
         signal=signal,
+    )
+
+    lifecycle_events.append(
+        make_lifecycle_event(
+            stage="signal_generated",
+            message="ML model generated latest trading signal.",
+            details={
+                "symbol": model_signal.symbol,
+                "latest_feature_timestamp": str(model_signal.timestamp),
+                "latest_close": model_signal.latest_close,
+                "probability": model_signal.probability,
+                "threshold": model_signal.threshold,
+                "signal": model_signal.signal,
+                "desired_state": model_signal.desired_state,
+            },
+        )
     )
 
     print("\nLatest Market/Model State")
@@ -275,6 +307,21 @@ def run_paper_trade_pipeline(args: argparse.Namespace) -> None:
         requested_qty=float(args.qty),
     )
 
+    lifecycle_events.append(
+        make_lifecycle_event(
+            stage="decision_built",
+            message="Paper-trading decision built from model signal and current position.",
+            details={
+                "symbol": decision.symbol,
+                "desired_state": decision.desired_state,
+                "current_position_qty": decision.current_position_qty,
+                "action": decision.action,
+                "order_qty": decision.order_qty,
+                "reason": decision.reason,
+            },
+        )
+    )
+
     print("\nTrading Decision")
     print("-" * 40)
     print(f"Action: {decision.action}")
@@ -294,6 +341,19 @@ def run_paper_trade_pipeline(args: argparse.Namespace) -> None:
     print("-" * 40)
     print(f"Approved: {risk_decision.approved}")
     print(f"Reason: {risk_decision.reason}")
+
+    lifecycle_events.append(
+        make_lifecycle_event(
+            stage="risk_checked",
+            message="Risk manager evaluated the paper-trading decision.",
+            details={
+                "approved": risk_decision.approved,
+                "reason": risk_decision.reason,
+                "max_order_qty": float(args.max_order_qty),
+                "min_buying_power_after_order": float(args.min_buying_power_after_order),
+            },
+        )
+    )
 
     # ------------------------------------------------------------
     # 4. Submit paper order only if --execute is provided
@@ -316,11 +376,36 @@ def run_paper_trade_pipeline(args: argparse.Namespace) -> None:
         print(f"Quantity: {submitted_order.qty}")
         print(f"Status: {submitted_order.status}")
 
+        lifecycle_events.append(
+            make_lifecycle_event(
+                stage="order_submitted",
+                message="Paper order was submitted to Alpaca.",
+                details={
+                    "symbol": decision.symbol,
+                    "side": decision.action,
+                    "qty": decision.order_qty,
+                    "order": AlpacaBroker.serialize_order(submitted_order),
+                },
+            )
+        )
+
     elif decision.action in {"BUY", "SELL"} and not risk_decision.approved:
         print("\nRisk Rejection")
         print("-" * 40)
         print("No paper order was submitted because the risk manager rejected the decision.")
         print(risk_decision.reason)
+
+        lifecycle_events.append(
+            make_lifecycle_event(
+                stage="order_rejected",
+                message="Paper order was not submitted because risk manager rejected it.",
+                details={
+                    "action": decision.action,
+                    "order_qty": decision.order_qty,
+                    "risk_reason": risk_decision.reason,
+                },
+            )
+        )
 
     elif decision.action in {"BUY", "SELL"} and not args.execute:
         print("\nDry Run")
@@ -328,10 +413,33 @@ def run_paper_trade_pipeline(args: argparse.Namespace) -> None:
         print("No paper order was submitted.")
         print("Run again with --execute to submit this order to Alpaca paper trading.")
 
+        lifecycle_events.append(
+            make_lifecycle_event(
+                stage="dry_run",
+                message="Paper order was not submitted because --execute was not provided.",
+                details={
+                    "action": decision.action,
+                    "order_qty": decision.order_qty,
+                },
+            )
+        )
+
     else:
         print("\nNo Order Submitted")
         print("-" * 40)
         print("The current paper position already matches the model signal.")
+
+        lifecycle_events.append(
+            make_lifecycle_event(
+                stage="no_order_needed",
+                message="No order was submitted because the current position already matches the model state.",
+                details={
+                    "action": decision.action,
+                    "desired_state": decision.desired_state,
+                    "current_position_qty": decision.current_position_qty,
+                },
+            )
+        )
 
     # ------------------------------------------------------------
     # 5. Save log
@@ -361,6 +469,7 @@ def run_paper_trade_pipeline(args: argparse.Namespace) -> None:
         "risk_reason": risk_decision.reason,
         "max_order_qty": float(args.max_order_qty),
         "min_buying_power_after_order": float(args.min_buying_power_after_order),
+        "lifecycle_events": [event.to_dict() for event in lifecycle_events],
         "submitted_order": AlpacaBroker.serialize_order(submitted_order),
     }
 

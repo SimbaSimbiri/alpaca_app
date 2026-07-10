@@ -103,10 +103,12 @@ The refactored package structure separates concerns so that data access, feature
 - Decides whether the account should BUY, SELL, or HOLD
 - Applies a risk-management gate before paper orders are submitted
 - Blocks oversized orders based on `--max-order-qty`
+- Records structured lifecycle events for signal generation, decision building, risk checks, and order submission outcomes
 - Blocks sell orders that would create a short position
 - Can enforce minimum buying power after a buy order
 - Submits a paper order only when explicitly run with `--execute`
 - Saves decision logs for review and video demonstration
+- Each paper-trading log includes a `lifecycle_events` array that shows how the system moved from model signal to trading decision, risk approval, and final order outcome.
 
 ---
 

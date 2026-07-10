@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal
-
+from typing import Any
 
 DesiredState = Literal["LONG", "FLAT"]
 TradeAction = Literal["BUY", "SELL", "HOLD"]
@@ -43,3 +43,31 @@ class PaperTradeDecision:
     action: TradeAction
     order_qty: float
     reason: str
+
+@dataclass(frozen=True)
+class TradeLifecycleEvent:
+    """
+    Structured event used for the paper-trading decision lifecycle.
+
+    Example stages:
+    - signal_generated
+    - decision_built
+    - risk_checked
+    - dry_run
+    - order_submitted
+    - order_rejected
+    - no_order_needed
+    """
+
+    stage: str
+    timestamp: datetime
+    message: str
+    details: dict[str, Any] | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "stage": self.stage,
+            "timestamp": self.timestamp.isoformat(),
+            "message": self.message,
+            "details": self.details or {},
+        }
