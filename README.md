@@ -428,34 +428,33 @@ outputs/SPY_YYYYMMDD_HHMMSS/
 │
 ├── data/
 │   ├── spy_daily_ohlcv.csv
-│   ├── hw3_spy_ml_dataset.csv
-│   ├── hw3_spy_train_pca.csv
-│   ├── hw3_spy_test_pca.csv
-│   ├── hw3_spy_test_data_with_ml_signals.csv
-│   ├── hw3_spy_backtest_comparison.csv
-│   ├── hw3_spy_round_trips.csv
-│   ├── hw3_spy_ml_raw_trades.csv
-│   └── hw3_spy_buy_hold_raw_trades.csv
+│   ├── ml_spy_train_pca.csv
+│   ├── ml_spy_test_pca.csv
+│   ├── ml_spy_test_data_with_ml_signals.csv
+│   ├── ml_spy_backtest_comparison.csv
+│   ├── ml_spy_round_trips.csv
+│   ├── ml_spy_ml_raw_trades.csv
+│   └── ml_spy_buy_hold_raw_trades.csv
 │
 ├── charts/
-│   ├── hw3_spy_equity_curve.png
-│   ├── hw3_spy_drawdown.png
-│   ├── hw3_spy_pca_variance.png
-│   ├── hw3_spy_ml_signals.png
-│   └── hw3_spy_probability_signal.png
+│   ├── ml_spy_equity_curve.png
+│   ├── ml_spy_drawdown.png
+│   ├── ml_spy_pca_variance.png
+│   ├── ml_spy_signals.png
+│   └── ml_spy_probability_signal.png
 │
 ├── reports/
-│   ├── hw3_spy_performance_metrics.csv
-│   ├── hw3_spy_performance_metrics_formatted.csv
-│   ├── hw3_spy_pca_summary.csv
-│   ├── hw3_spy_feature_columns.csv
-│   └── hw3_spy_run_config.json
+│   ├── ml_spy_performance_metrics.csv
+│   ├── ml_spy_performance_metrics_formatted.csv
+│   ├── ml_spy_pca_summary.csv
+│   ├── ml_spy_feature_columns.csv
+│   └── ml_spy_run_config.json
 │
 └── artifacts/
-    └── hw3_spy_model_bundle.joblib
+    └── ml_spy_model_bundle.joblib
 ```
 
-The internal output filenames still use the `hw3_` prefix for compatibility with existing generated outputs. The production-facing runner names have already been cleaned up.
+The internal output filenames now use the `ml_` prefix.
 
 ---
 
@@ -511,7 +510,7 @@ The paper-trading workflow loads a saved model bundle and generates the latest t
 A dry run is the default behavior. It prints the decision but does not submit an order.
 
 ```bash
-python run_paper_trade.py --model-bundle outputs\SPY_<timestamp>\artifacts\hw3_spy_model_bundle.joblib
+python run_paper_trade.py --model-bundle outputs\SPY_<timestamp>\artifacts\ml_spy_model_bundle.joblib
 ```
 
 Expected dry-run output includes:
@@ -530,7 +529,7 @@ Dry Run: No paper order was submitted.
 Only use `--execute` after reviewing the dry run.
 
 ```bash
-python run_paper_trade.py --model-bundle outputs\SPY_<timestamp>\artifacts\hw3_spy_model_bundle.joblib --qty 1 --execute
+python run_paper_trade.py --model-bundle outputs\SPY_<timestamp>\artifacts\ml_spy_model_bundle.joblib --qty 1 --execute
 ```
 
 This submits a paper market order only. No real money is used.
@@ -540,7 +539,7 @@ This submits a paper market order only. No real money is used.
 Run the same command again after the order has been submitted:
 
 ```bash
-python run_paper_trade.py --model-bundle outputs\SPY_<timestamp>\artifacts\hw3_spy_model_bundle.joblib --qty 1 --execute
+python run_paper_trade.py --model-bundle outputs\SPY_<timestamp>\artifacts\ml_spy_model_bundle.joblib --qty 1 --execute
 ```
 
 When the model still wants LONG and the paper account is already long, the script should print:
@@ -882,13 +881,13 @@ The video walkthrough can follow this sequence:
 7. Run a paper-trading dry run:
 
    ```bash
-   python run_paper_trade.py --model-bundle outputs\SPY_<timestamp>\artifacts\hw3_spy_model_bundle.joblib
+   python run_paper_trade.py --model-bundle outputs\SPY_<timestamp>\artifacts\ml_spy_model_bundle.joblib
    ```
 
 8. Run a paper-trading execution command:
 
    ```bash
-   python run_paper_trade.py --model-bundle outputs\SPY_<timestamp>\artifacts\hw3_spy_model_bundle.joblib --qty 1 --execute
+   python run_paper_trade.py --model-bundle outputs\SPY_<timestamp>\artifacts\ml_spy_model_bundle.joblib --qty 1 --execute
    ```
 
 9. Show the Alpaca paper dashboard.
@@ -934,8 +933,8 @@ python run_ml_backtest.py --symbol SPY
 python run_signal_scan.py --symbols SPY AAPL MSFT QQQ NVDA TSLA
 
 # Paper-trading dry run
-python run_paper_trade.py --model-bundle outputs\SPY_<timestamp>\artifacts\hw3_spy_model_bundle.joblib
+python run_paper_trade.py --model-bundle outputs\SPY_<timestamp>\artifacts\ml_spy_model_bundle.joblib
 
 # Paper-trading execution
-python run_paper_trade.py --model-bundle outputs\SPY_<timestamp>\artifacts\hw3_spy_model_bundle.joblib --qty 1 --execute
+python run_paper_trade.py --model-bundle outputs\SPY_<timestamp>\artifacts\ml_spy_model_bundle.joblib --qty 1 --execute
 ```

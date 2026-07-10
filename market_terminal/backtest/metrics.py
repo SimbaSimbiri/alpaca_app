@@ -280,7 +280,7 @@ def calculate_equity_metrics(
 # The following functions are for debugging purposes in the console
 ###
 
-def build_hw3_performance_table(
+def build_ml_performance_table(
     comparison_df: pd.DataFrame,
     round_trips: pd.DataFrame,
     initial_capital: float = INITIAL_CAPITAL,
@@ -341,7 +341,7 @@ def build_hw3_performance_table(
     return table.set_index("Strategy")
 
 
-def format_hw3_metrics_for_console(metrics: pd.DataFrame) -> pd.DataFrame:
+def format_ml_metrics_for_console(metrics: pd.DataFrame) -> pd.DataFrame:
     """
     Formats the metrics table for readable terminal output.
     """
@@ -349,12 +349,12 @@ def format_hw3_metrics_for_console(metrics: pd.DataFrame) -> pd.DataFrame:
     return format_metrics_for_console(metrics)
 
 
-def print_hw3_performance_summary(metrics: pd.DataFrame) -> None:
+def print_ml_performance_summary(metrics: pd.DataFrame) -> None:
     """
     Prints the performance table and a short interpretation.
     """
 
-    formatted = format_hw3_metrics_for_console(metrics)
+    formatted = format_ml_metrics_for_console(metrics)
 
     print("\nPerformance Metrics")
     print("-" * 40)
@@ -390,3 +390,15 @@ def print_hw3_performance_summary(metrics: pd.DataFrame) -> None:
         print("The ML strategy had a smaller maximum drawdown than Buy & Hold.")
     else:
         print("Buy & Hold had a smaller maximum drawdown than the ML strategy.")
+
+# Backward-compatible aliases for older imports.
+def build_hw3_performance_table(*args, **kwargs):
+    return build_ml_performance_table(*args, **kwargs)
+
+
+def format_hw3_metrics_for_console(*args, **kwargs):
+    return format_ml_metrics_for_console(*args, **kwargs)
+
+
+def print_hw3_performance_summary(*args, **kwargs):
+    return print_ml_performance_summary(*args, **kwargs)

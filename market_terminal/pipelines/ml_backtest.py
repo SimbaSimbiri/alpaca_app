@@ -16,15 +16,15 @@ from market_terminal.backtest.engine import (
     extract_round_trips_from_result,
 )
 from market_terminal.backtest.metrics import (
-    build_hw3_performance_table,
-    format_hw3_metrics_for_console,
-    print_hw3_performance_summary,
+    build_ml_performance_table,
+    format_ml_metrics_for_console,
+    print_ml_performance_summary,
 )
 from market_terminal.core.time_utils import parse_date_arg, years_ago
 from market_terminal.data.alpaca_historical import download_daily_ohlcv_from_alpaca
 from market_terminal.features.feature_engineering import FEATURE_COLUMNS, get_clean_ml_dataset
 from market_terminal.features.pca import fit_pca, print_pca_summary, transform_pca
-from market_terminal.reporting.visualizations import save_hw3_charts
+from market_terminal.reporting.visualizations import save_ml_strategy_charts
 from market_terminal.strategy.ml_model import (
     predict_up_probability,
     print_model_summary,
@@ -100,7 +100,7 @@ def run_ml_backtest_pipeline(args: argparse.Namespace) -> None:
     report_dir.mkdir(parents=True, exist_ok=True)
     artifact_dir.mkdir(parents=True, exist_ok=True)
 
-    print("\nHW3 ML Backtest")
+    print("\nMachine-Learning Strategy Backtest")
     print("-" * 40)
     print(f"Symbol: {symbol}")
     print(f"Start: {start}")
@@ -137,7 +137,7 @@ def run_ml_backtest_pipeline(args: argparse.Namespace) -> None:
             "Use a longer date range."
         )
 
-    ml_dataset_path = data_dir / f"hw3_{safe_symbol}_ml_dataset.csv"
+    ml_dataset_path = data_dir / f"ml_{safe_symbol}_dataset.csv"
     ml_data.to_csv(ml_dataset_path)
 
     X = ml_data[FEATURE_COLUMNS]
@@ -152,7 +152,7 @@ def run_ml_backtest_pipeline(args: argparse.Namespace) -> None:
     print("\nSaved ML dataset to:")
     print(ml_dataset_path)
 
-    feature_columns_path = report_dir / f"hw3_{safe_symbol}_feature_columns.csv"
+    feature_columns_path = report_dir / f"ml_{safe_symbol}_feature_columns.csv"
     pd.Series(FEATURE_COLUMNS, name="feature").to_csv(feature_columns_path, index=False)
 
     # Time-series split
@@ -183,9 +183,9 @@ def run_ml_backtest_pipeline(args: argparse.Namespace) -> None:
 
     print_pca_summary(fitted_pca)
 
-    train_pca_path = data_dir / f"hw3_{safe_symbol}_train_pca.csv"
-    test_pca_path = data_dir / f"hw3_{safe_symbol}_test_pca.csv"
-    pca_summary_path = report_dir / f"hw3_{safe_symbol}_pca_summary.csv"
+    train_pca_path = data_dir / f"ml_{safe_symbol}_train_pca.csv"
+    test_pca_path = data_dir / f"ml_{safe_symbol}_test_pca.csv"
+    pca_summary_path = report_dir / f"ml_{safe_symbol}_pca_summary.csv"
 
     X_train_pca.to_csv(train_pca_path)
     X_test_pca.to_csv(test_pca_path)
@@ -230,7 +230,7 @@ def run_ml_backtest_pipeline(args: argparse.Namespace) -> None:
     print("\nSignal counts:")
     print(test_data["ml_signal"].value_counts())
 
-    test_data_path = data_dir / f"hw3_{safe_symbol}_test_data_with_ml_signals.csv"
+    test_data_path = data_dir / f"ml_{safe_symbol}_test_data_with_signals.csv"
     test_data.to_csv(test_data_path)
 
     # Backtest ML Signal and Buy & Hold
@@ -263,10 +263,10 @@ def run_ml_backtest_pipeline(args: argparse.Namespace) -> None:
         buy_hold_result=buy_hold_result,
     )
 
-    comparison_path = data_dir / f"hw3_{safe_symbol}_backtest_comparison.csv"
-    round_trips_path = data_dir / f"hw3_{safe_symbol}_round_trips.csv"
-    ml_trades_path = data_dir / f"hw3_{safe_symbol}_ml_raw_trades.csv"
-    buy_hold_trades_path = data_dir / f"hw3_{safe_symbol}_buy_hold_raw_trades.csv"
+    comparison_path = data_dir / f"ml_{safe_symbol}_backtest_comparison.csv"
+    round_trips_path = data_dir / f"ml_{safe_symbol}_round_trips.csv"
+    ml_trades_path = data_dir / f"ml_{safe_symbol}_strategy_raw_trades.csv"
+    buy_hold_trades_path = data_dir / f"ml_{safe_symbol}_buy_hold_raw_trades.csv"
 
     comparison_df.to_csv(comparison_path)
     round_trips.to_csv(round_trips_path, index=False)
@@ -278,18 +278,15 @@ def run_ml_backtest_pipeline(args: argparse.Namespace) -> None:
 
     # Performance metrics
 
-    metrics = build_hw3_performance_table(
-        comparison_df=comparison_df,
-        round_trips=round_trips,
-        initial_capital=args.initial_capital,
-    )
+    metrics = build_ml_performance_table(comparison_df=comparison_df, round_trips=round_trips,
+                                         initial_capital=args.initial_capital)
 
-    print_hw3_performance_summary(metrics)
+    print_ml_performance_summary(metrics)
 
-    formatted_metrics = format_hw3_metrics_for_console(metrics)
+    formatted_metrics = format_ml_metrics_for_console(metrics)
 
-    metrics_path = report_dir / f"hw3_{safe_symbol}_performance_metrics.csv"
-    formatted_metrics_path = report_dir / f"hw3_{safe_symbol}_performance_metrics_formatted.csv"
+    metrics_path = report_dir / f"ml_{safe_symbol}_performance_metrics.csv"
+    formatted_metrics_path = report_dir / f"ml_{safe_symbol}_performance_metrics_formatted.csv"
 
     metrics.to_csv(metrics_path)
     formatted_metrics.to_csv(formatted_metrics_path)
@@ -302,16 +299,10 @@ def run_ml_backtest_pipeline(args: argparse.Namespace) -> None:
 
     # Save charts
 
-    chart_paths = save_hw3_charts(
-        test_data=test_data,
-        comparison_df=comparison_df,
-        fitted_pca=fitted_pca,
-        chart_dir=chart_dir,
-        symbol=symbol,
-        threshold=args.threshold,
-    )
+    chart_paths = save_ml_strategy_charts(test_data=test_data, comparison_df=comparison_df, fitted_pca=fitted_pca,
+                                          chart_dir=chart_dir, symbol=symbol, threshold=args.threshold)
 
-    print("\nSaved HW3 charts:")
+    print("\nSaved ML charts:")
     for path in chart_paths:
         print(path)
 
@@ -330,7 +321,7 @@ def run_ml_backtest_pipeline(args: argparse.Namespace) -> None:
         "test_end": str(X_test.index.max()),
     }
 
-    model_bundle_path = artifact_dir / f"hw3_{safe_symbol}_model_bundle.joblib"
+    model_bundle_path = artifact_dir / f"ml_{safe_symbol}_model_bundle.joblib"
     joblib.dump(model_bundle, model_bundle_path)
 
     run_config = {
@@ -350,7 +341,7 @@ def run_ml_backtest_pipeline(args: argparse.Namespace) -> None:
         "model_bundle_path": str(model_bundle_path),
     }
 
-    run_config_path = report_dir / f"hw3_{safe_symbol}_run_config.json"
+    run_config_path = report_dir / f"ml_{safe_symbol}_run_config.json"
 
     with open(run_config_path, "w", encoding="utf-8") as file:
         json.dump(run_config, file, indent=2)
@@ -373,4 +364,3 @@ def run_ml_backtest_pipeline(args: argparse.Namespace) -> None:
     print(f"ML round trips: {len(round_trips)}")
     print(f"ML long-signal days: {int(test_data['ml_signal'].sum())}")
     print(f"Output directory: {output_dir}")
-

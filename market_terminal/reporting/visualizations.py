@@ -197,7 +197,7 @@ def save_all_charts(
 # -------------------------------------------------------------------
 
 
-def plot_hw3_equity_curve(
+def plot_ml_equity_curve(
     comparison_df: pd.DataFrame,
     output_path: str | Path,
     symbol: str = "AAPL",
@@ -229,7 +229,7 @@ def plot_hw3_equity_curve(
     return output_path
 
 
-def plot_hw3_drawdown(
+def plot_ml_drawdown(
     comparison_df: pd.DataFrame,
     output_path: str | Path,
     symbol: str = "AAPL",
@@ -261,7 +261,7 @@ def plot_hw3_drawdown(
     return output_path
 
 
-def plot_hw3_pca_variance(
+def plot_ml_pca_variance(
     fitted_pca,
     output_path: str | Path,
     symbol: str = "AAPL",
@@ -292,7 +292,7 @@ def plot_hw3_pca_variance(
     return output_path
 
 
-def plot_hw3_ml_signals(
+def plot_ml_signals(
     test_data: pd.DataFrame,
     output_path: str | Path,
     symbol: str = "AAPL",
@@ -335,7 +335,7 @@ def plot_hw3_ml_signals(
     return output_path
 
 
-def plot_hw3_probability_signal(
+def plot_ml_probability_signal(
     test_data: pd.DataFrame,
     output_path: str | Path,
     threshold: float = 0.60,
@@ -377,7 +377,7 @@ def plot_hw3_probability_signal(
     return output_path
 
 
-def save_hw3_charts(
+def save_ml_strategy_charts(
     test_data: pd.DataFrame,
     comparison_df: pd.DataFrame,
     fitted_pca,
@@ -391,32 +391,42 @@ def save_hw3_charts(
     safe_symbol = symbol.lower()
 
     paths = [
-        plot_hw3_equity_curve(
-            comparison_df=comparison_df,
-            output_path=chart_dir / f"hw3_{safe_symbol}_equity_curve.png",
-            symbol=symbol,
-        ),
-        plot_hw3_drawdown(
-            comparison_df=comparison_df,
-            output_path=chart_dir / f"hw3_{safe_symbol}_drawdown.png",
-            symbol=symbol,
-        ),
-        plot_hw3_pca_variance(
-            fitted_pca=fitted_pca,
-            output_path=chart_dir / f"hw3_{safe_symbol}_pca_variance.png",
-            symbol=symbol,
-        ),
-        plot_hw3_ml_signals(
-            test_data=test_data,
-            output_path=chart_dir / f"hw3_{safe_symbol}_ml_signals.png",
-            symbol=symbol,
-        ),
-        plot_hw3_probability_signal(
-            test_data=test_data,
-            output_path=chart_dir / f"hw3_{safe_symbol}_probability_signal.png",
-            threshold=threshold,
-            symbol=symbol,
-        ),
+        plot_ml_equity_curve(comparison_df=comparison_df, output_path=chart_dir / f"ml_{safe_symbol}_equity_curve.png",
+                             symbol=symbol),
+        plot_ml_drawdown(comparison_df=comparison_df, output_path=chart_dir / f"ml_{safe_symbol}_drawdown.png",
+                         symbol=symbol),
+        plot_ml_pca_variance(fitted_pca=fitted_pca, output_path=chart_dir / f"ml_{safe_symbol}_pca_variance.png",
+                             symbol=symbol),
+        plot_ml_signals(test_data=test_data, output_path=chart_dir / f"ml_{safe_symbol}_signals.png",
+                        symbol=symbol),
+        plot_ml_probability_signal(test_data=test_data,
+                                   output_path=chart_dir / f"ml_{safe_symbol}_probability_signal.png",
+                                   threshold=threshold, symbol=symbol),
     ]
 
     return paths
+
+# Backward-compatible aliases for older imports.
+def plot_hw3_equity_curve(*args, **kwargs):
+    return plot_ml_equity_curve(*args, **kwargs)
+
+
+def plot_hw3_drawdown(*args, **kwargs):
+    return plot_ml_drawdown(*args, **kwargs)
+
+
+def plot_hw3_pca_variance(*args, **kwargs):
+    return plot_ml_pca_variance(*args, **kwargs)
+
+
+def plot_hw3_ml_signals(*args, **kwargs):
+    return plot_ml_signals(*args, **kwargs)
+
+
+def plot_hw3_probability_signal(*args, **kwargs):
+    return plot_ml_probability_signal(*args, **kwargs)
+
+
+def save_hw3_charts(*args, **kwargs):
+    return save_ml_strategy_charts(*args, **kwargs)
+

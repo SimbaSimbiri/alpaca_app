@@ -141,7 +141,7 @@ def scan_symbol(
 def run_signal_scan_pipeline(args: argparse.Namespace) -> None:
     symbols = [symbol.upper().strip() for symbol in args.symbols]
 
-    print("\nHW3 Latest Signal Scan")
+    print("\nLatest ML Signal Scan")
     print("-" * 40)
     print(f"Feed: {args.feed}")
     print(f"Data delay minutes: {args.data_delay_minutes}")
@@ -209,7 +209,7 @@ def run_signal_scan_pipeline(args: argparse.Namespace) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_path = output_dir / f"hw3_signal_scan_{timestamp}.csv"
+    output_path = output_dir / f"ml_signal_scan_{timestamp}.csv"
 
     results.to_csv(output_path, index=False)
 
@@ -256,7 +256,7 @@ def run_signal_scan_pipeline(args: argparse.Namespace) -> None:
         print("\nSuggested next step")
         print("-" * 40)
         print(f"Run a full backtest/model-bundle generation for {best_symbol}:")
-        print(f"python run_hw3_ml_backtest.py --symbol {best_symbol}")
+        print(f"python run_ml_backtest.py --symbol {best_symbol}")
         print()
         print("Then run the paper-trading dry run using the new model bundle.")
 

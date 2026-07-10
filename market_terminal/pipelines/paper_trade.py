@@ -124,7 +124,7 @@ def save_paper_trade_log(
     log_dir.mkdir(parents=True, exist_ok=True)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    path = log_dir / f"hw3_{symbol.lower()}_paper_trade_log_{timestamp}.json"
+    path = log_dir / f"ml_{symbol.lower()}_paper_trade_log_{timestamp}.json"
 
     with open(path, "w", encoding="utf-8") as file:
         json.dump(log, file, indent=2, default=str)
@@ -148,7 +148,7 @@ def run_paper_trade_pipeline(args: argparse.Namespace) -> None:
         else float(bundle["probability_threshold"])
     )
 
-    print("\nHW3 Paper Trading Demo")
+    print("\nML Paper Trading Demo")
     print("-" * 40)
     print("This is paper trading only — no real money is used.")
     print(f"Symbol: {symbol}")

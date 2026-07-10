@@ -7,7 +7,7 @@ from market_terminal.pipelines.ml_backtest import run_ml_backtest_pipeline
 
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Run HW3 ML trading pipeline with fresh Alpaca OHLCV data.",
+        description="Run ML trading pipeline with fresh Alpaca OHLCV data.",
     )
 
     parser.add_argument(

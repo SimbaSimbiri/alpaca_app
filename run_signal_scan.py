@@ -10,7 +10,7 @@ from market_terminal.pipelines.signal_scan import (
 
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Scan multiple tickers for current HW3 ML long signals.",
+        description="Scan multiple tickers for current ML long signals.",
     )
 
     parser.add_argument(

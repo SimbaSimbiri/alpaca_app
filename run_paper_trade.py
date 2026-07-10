@@ -7,14 +7,14 @@ from market_terminal.pipelines.paper_trade import run_paper_trade_pipeline
 
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Run HW3 Alpaca paper-trading demo using a saved ML model bundle.",
+        description="Run Alpaca paper-trading demo using a saved ML model bundle.",
     )
 
     parser.add_argument(
         "--model-bundle",
         type=str,
         required=True,
-        help="Path to saved model bundle, for example outputs/AAPL_.../artifacts/hw3_aapl_model_bundle.joblib.",
+        help="Path to saved model bundle, for example outputs/AAPL_.../artifacts/ml_aapl_model_bundle.joblib.",
     )
 
     parser.add_argument(
