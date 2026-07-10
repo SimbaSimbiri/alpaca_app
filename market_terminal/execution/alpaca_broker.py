@@ -112,11 +112,17 @@ class AlpacaBroker:
         return self.client.submit_order(order_data=order_request)
 
     @staticmethod
-    def serialize_order(order) -> dict[str, Any]:
-        """
-        Converts an Alpaca order object into a JSON-friendly dictionary.
-        """
+    def _serialize_value(value: Any) -> str | None:
+        if value is None:
+            return None
 
+        if hasattr(value, "value"):
+            return str(value.value)
+
+        return str(value)
+
+    @staticmethod
+    def serialize_order(order) -> dict[str, Any]:
         if order is None:
             return {}
 
@@ -132,14 +138,85 @@ class AlpacaBroker:
             "status",
             "submitted_at",
             "filled_at",
+            "canceled_at",
+            "expired_at",
+            "failed_at",
+            "replaced_at",
+            "asset_class",
+            "order_class",
         ]
 
         output = {}
 
         for field in fields:
             value = getattr(order, field, None)
+            serialized_value = AlpacaBroker._serialize_value(value)
 
-            if value is not None:
-                output[field] = str(value)
+            if serialized_value is not None:
+                output[field] = serialized_value
 
         return output
+
+    @staticmethod
+    def serialize_position(position) -> dict[str, Any]:
+        if position is None:
+            return {}
+
+        fields = [
+            "asset_id",
+            "symbol",
+            "exchange",
+            "asset_class",
+            "qty",
+            "avg_entry_price",
+            "side",
+            "market_value",
+            "cost_basis",
+            "unrealized_pl",
+            "unrealized_plpc",
+            "unrealized_intraday_pl",
+            "unrealized_intraday_plpc",
+            "current_price",
+            "lastday_price",
+            "change_today",
+        ]
+
+        output = {}
+
+        for field in fields:
+            value = getattr(position, field, None)
+            serialized_value = AlpacaBroker._serialize_value(value)
+
+            if serialized_value is not None:
+                output[field] = serialized_value
+
+        return output
+
+    def get_positions(self):
+        return self.client.get_all_positions()
+
+    def get_open_orders(self):
+        return self.client.get_orders()
+
+    def get_recent_orders(self, limit: int = 50, status: str = "all"):
+        from alpaca.trading.enums import QueryOrderStatus
+        from alpaca.trading.requests import GetOrdersRequest
+
+        clean_status = status.lower().strip()
+
+        if clean_status == "open":
+            order_status = QueryOrderStatus.OPEN
+        elif clean_status == "closed":
+            order_status = QueryOrderStatus.CLOSED
+        else:
+            order_status = QueryOrderStatus.ALL
+
+        request = GetOrdersRequest(
+            status=order_status,
+            limit=limit,
+        )
+
+        return self.client.get_orders(filter=request)
+
+    def get_order_by_id(self, order_id: str):
+        return self.client.get_order_by_id(order_id)

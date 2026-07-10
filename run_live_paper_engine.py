@@ -64,6 +64,13 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument(
+        "--order-snapshot-limit",
+        type=int,
+        default=50,
+        help="Number of recent Alpaca paper orders to include in each order snapshot.",
+    )
+
+    parser.add_argument(
         "--min-buying-power-after-order",
         type=float,
         default=0.0,

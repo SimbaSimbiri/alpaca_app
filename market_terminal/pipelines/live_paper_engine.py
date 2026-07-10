@@ -16,7 +16,7 @@ from market_terminal.pipelines.paper_trade import (
     save_paper_trade_log,
 )
 from market_terminal.risk.risk_manager import RiskConfig, RiskManager
-
+from market_terminal.execution.account_snapshot_logger import AccountSnapshotLogger
 
 def run_single_engine_cycle(
     model_bundle_path: Path,
@@ -200,6 +200,43 @@ def run_single_engine_cycle(
             )
         )
 
+    snapshot_logger = AccountSnapshotLogger()
+
+    order_snapshot_path = None
+    position_snapshot_path = None
+    snapshot_error = None
+
+    try:
+        recent_orders = broker.get_recent_orders(limit=int(args.order_snapshot_limit))
+        positions = broker.get_positions()
+
+        order_snapshot_path = snapshot_logger.write_order_snapshot(recent_orders)
+        position_snapshot_path = snapshot_logger.write_position_snapshot(positions)
+
+        lifecycle_events.append(
+            make_lifecycle_event(
+                stage="account_snapshot_saved",
+                message="Live paper engine saved account order and position snapshots.",
+                details={
+                    "order_snapshot_path": str(order_snapshot_path),
+                    "position_snapshot_path": str(position_snapshot_path),
+                },
+            )
+        )
+
+    except Exception as exc:
+        snapshot_error = str(exc)
+
+        lifecycle_events.append(
+            make_lifecycle_event(
+                stage="account_snapshot_failed",
+                message="Live paper engine failed to save account order or position snapshot.",
+                details={
+                    "error": snapshot_error,
+                },
+            )
+        )
+
     log = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "paper_trading_only": True,
@@ -223,6 +260,9 @@ def run_single_engine_cycle(
         "execute": args.execute,
         "risk_approved": risk_decision.approved,
         "risk_reason": risk_decision.reason,
+        "order_snapshot_path": str(order_snapshot_path) if order_snapshot_path else None,
+        "position_snapshot_path": str(position_snapshot_path) if position_snapshot_path else None,
+        "snapshot_error": snapshot_error,
         "max_order_qty": float(args.max_order_qty),
         "min_buying_power_after_order": float(args.min_buying_power_after_order),
         "lifecycle_events": [event.to_dict() for event in lifecycle_events],

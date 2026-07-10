@@ -12,6 +12,7 @@ import pandas as pd
 
 from market_terminal.core.time_utils import years_ago
 from market_terminal.data.alpaca_historical import download_daily_ohlcv_from_alpaca
+from market_terminal.execution.account_snapshot_logger import AccountSnapshotLogger
 from market_terminal.execution.alpaca_broker import AlpacaBroker
 from market_terminal.features.feature_engineering import add_ml_features
 from market_terminal.features.pca import transform_pca
@@ -441,6 +442,43 @@ def run_paper_trade_pipeline(args: argparse.Namespace) -> None:
             )
         )
 
+    snapshot_logger = AccountSnapshotLogger()
+
+    order_snapshot_path = None
+    position_snapshot_path = None
+    snapshot_error = None
+
+    try:
+        recent_orders = broker.get_recent_orders(limit=int(args.order_snapshot_limit))
+        positions = broker.get_positions()
+
+        order_snapshot_path = snapshot_logger.write_order_snapshot(recent_orders)
+        position_snapshot_path = snapshot_logger.write_position_snapshot(positions)
+
+        lifecycle_events.append(
+            make_lifecycle_event(
+                stage="account_snapshot_saved",
+                message="Saved paper account order and position snapshots.",
+                details={
+                    "order_snapshot_path": str(order_snapshot_path),
+                    "position_snapshot_path": str(position_snapshot_path),
+                },
+            )
+        )
+
+    except Exception as exc:
+        snapshot_error = str(exc)
+
+        lifecycle_events.append(
+            make_lifecycle_event(
+                stage="account_snapshot_failed",
+                message="Failed to save paper account order or position snapshot.",
+                details={
+                    "error": snapshot_error,
+                },
+            )
+        )
+
     # ------------------------------------------------------------
     # 5. Save log
     # ------------------------------------------------------------
@@ -467,6 +505,9 @@ def run_paper_trade_pipeline(args: argparse.Namespace) -> None:
         "execute": args.execute,
         "risk_approved": risk_decision.approved,
         "risk_reason": risk_decision.reason,
+        "order_snapshot_path": str(order_snapshot_path) if order_snapshot_path else None,
+        "position_snapshot_path": str(position_snapshot_path) if position_snapshot_path else None,
+        "snapshot_error": snapshot_error,
         "max_order_qty": float(args.max_order_qty),
         "min_buying_power_after_order": float(args.min_buying_power_after_order),
         "lifecycle_events": [event.to_dict() for event in lifecycle_events],
